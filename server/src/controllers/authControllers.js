@@ -85,14 +85,18 @@ export const userLogin = async (req, res) => {
 
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return res.status(401).json({ message: "Invalid email or password" });
         }
 
         const isMatch = await bcrypt.compare(password, user.passwordHash);
 
         if (!isMatch) {
-            return res.status(404).json({ message: "Invalid password" });
+            return res.status(401).json({ message: "Invalid email or password" });
         }
+
+        //Update lastLogin
+        user.lastLoginAt= new Date();
+        await user.save();
 
         const { accessToken } = signAccessToken(user);
         const { token: refreshToken, expiresAt } = generateRefreshToken();
@@ -141,37 +145,36 @@ export const refresh = async (req, res) => {
 
     const tokenHash = hashToken(refreshToken);
 
-
-    // findOne with revoked:false and expiresAt in the future - this is the actual "is this refresh token still good?" check
-    try {
-
-        const record = await RefreshToken.findOne({
-            tokenHash,
-            revoked: false,
-            expiresAt: { $gt: new Date() }
-        });
-
-        if (!record || record.expiresAt < new Date()) {
-            res.clearCookie("refreshToken", {
+    //Clear refrsh-token cookie
+    const clearRefreshTokenCookie= (res)=>{
+        res.clearCookie("refreshToken", {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",
             });
+    }
+    
+
+    // findOne with revoked:false and expiresAt in the future - this is the actual "is this refresh token still good?" check
+    try {
+
+        const record = await RefreshToken.findOne({tokenHash});
+
+        if (!record || record.expiresAt < new Date()) {
+            clearRefreshTokenCookie(res);
             return res.status(401).json({ error: "Invalid or expired refresh token" });
         }
+        
 
         if (record.revoked) {
+            clearRefreshTokenCookie(res);
             await RefreshToken.updateMany({ userId: record.userId }, { revoked: true }); // kill every session
             return res.status(401).json({ error: "Session invalid, please log in again" });
         }
 
         const user = await User.findById(record.userId);
         if (!user) {
-            res.clearCookie("refreshToken", {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-            });
+            clearRefreshTokenCookie(res);
             return res.status(401).json({ error: "User no longer exists" });
         }
 
@@ -238,5 +241,21 @@ export const userLogout = async (req, res) => {
         return res.status(200).json({ message: "Logout successfully" });
     } catch (err) {
         return res.status(500).json({ error: err.message });
+    }
+}
+
+
+export const findMe= async (req,res)=>{
+    try{
+        const user= await User.findById(req.userId).select("-passwordHash");
+        // req.userId comes from your `auth` middleware, set from the verified JWT's `sub` claim - it can't be spoofed by the client, because it was extracted AFTER jwt.verify() confirmed the token's signature is valid.
+        if(!user){
+            return res.status(404).json({message:"User not found"});
+        }
+
+        return res.status(200).json(user);
+
+    }catch(err){
+        return res.status(500).json({error: err.message});
     }
 }
