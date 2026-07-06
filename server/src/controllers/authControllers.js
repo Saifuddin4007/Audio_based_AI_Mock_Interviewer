@@ -48,12 +48,22 @@ const hashToken = (token) => {
 
 //!Register/Signup User
 export const userSignup = async (req, res) => {
+
     try {
-        const { email, password } = req.body;
+        const {email, password} = req.body || {};
+
         if (!email || !password) {
             return res.status(400).json({ message: "Please provide both Email and Password" });
         }
 
+        if(!email.includes('@') ||!email.endsWith('.com')){
+            return res.status(400).json({error:"Email format is wrong, provide proper email"});
+        }
+        if(password.length<=8){
+            return res.status(400).json({error:"Password is less than 8 characters, password must be 8 characters or more"});
+        }
+
+        
         const userExist = await User.findOne({ email });
         if (userExist) {
             return res.status(400).json({ Error: 'User already exists' });
@@ -78,11 +88,12 @@ export const userSignup = async (req, res) => {
 //!Login User
 export const userLogin = async (req, res) => {
     try {
-        const { email, password } = req.body;
+
+        const { email, password } = req.body || {};
+        
         if (!email || !password) {
             return res.status(400).json({ message: "Please provide both Email and Password" });
         }
-
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(401).json({ message: "Invalid email or password" });
@@ -244,7 +255,7 @@ export const userLogout = async (req, res) => {
     }
 }
 
-
+//!findMe
 export const findMe= async (req,res)=>{
     try{
         const user= await User.findById(req.userId).select("-passwordHash");
