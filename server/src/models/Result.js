@@ -5,7 +5,8 @@ const resultSchema= new mongoose.Schema({
     session: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Session',
-        required: true
+        required: true,
+        unique: true
     },
     overallScore: {
         type: Number,
@@ -13,7 +14,7 @@ const resultSchema= new mongoose.Schema({
         min: 0,
         max: 100
     },
-    technicalScore: {
+    domainScore: {
         type: Number,
         required: true,
         min: 0,
@@ -28,6 +29,10 @@ const resultSchema= new mongoose.Schema({
     feedback: {
         type: String,
         required: true
+    },
+    isPartialEvaluation: {
+        type: Boolean,
+        default: false
     },
     strengths:[String],
     weaknesses: [String],
