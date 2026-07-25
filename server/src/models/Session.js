@@ -19,6 +19,16 @@ const sessionSchema= new mongoose.Schema({
         type: [String],
         required: true
     },
+    totalQuestions: {
+        type: Number,
+        default: 10,
+        min: 1
+    },
+    currentQuestion: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     difficulty: {
         type: String,
         enum:[
@@ -54,6 +64,7 @@ const sessionSchema= new mongoose.Schema({
     },
     questions: [
         {
+            questionNumber: Number,
             questionText: {
                 type: String,
                 required: true
