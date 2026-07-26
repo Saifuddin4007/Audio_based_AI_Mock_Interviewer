@@ -39,3 +39,9 @@ export const saveTurn = async (sessionId, humanContent, aiContent) => {
         throw new Error(err.message);
     }
 }
+
+
+// services/historyService.js
+export async function clearHistory(sessionId) {
+  await redisClient.del(`interview:${sessionId}`);
+}
