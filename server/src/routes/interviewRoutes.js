@@ -1,13 +1,14 @@
 import express from 'express';
-import { abandonInterview, startInterview, submitAnswerAndNext } from '../controllers/interviewController';
+import { abandonInterview, startInterview, submitAnswerAndNext } from '../controllers/interviewController.js';
+import { auth } from '../middlewares/auth.js';
 
 const router= express.Router();
 
-router.post('/start', startInterview);
+router.post('/start', auth, startInterview);
 
-router.post('/submit', submitAnswerAndNext);
+router.post('/submit', auth, submitAnswerAndNext);
 
-router.post('/abandon', abandonInterview);
+router.post('/abandon', auth, abandonInterview);
 
 
 export default router;
