@@ -1,4 +1,4 @@
-import Result from "../models/result";
+import Result from "../models/Result.js";
 
 
 export const getAllResults= async (req,res)=>{
