@@ -1,4 +1,6 @@
 import express from 'express';
+import { auth } from '../middlewares/auth.js';
+import { getAllResults, getOneResult } from '../controllers/resultControllers.js';
 
 const router= express.Router();
 
