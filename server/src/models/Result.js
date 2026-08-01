@@ -45,8 +45,6 @@ const resultSchema= new mongoose.Schema({
 
 });
 
-resultSchema.index({session:1});
-
 const Result= mongoose.model("Result", resultSchema);
 
 export default Result;
