@@ -106,30 +106,15 @@ Scoring Rules:
 - Domain Score (0-100)
 - Communication Score (0-100)
 
-Return ONLY a valid JSON object with the following structure:
+Evaluate the candidate and provide:
 
-{{
-  "overallScore": <number>,
-  "domainScore": <number>,
-  "communicationScore": <number>,
-  "strengths": [
-    "...",
-    "..."
-  ],
-  "weaknesses": [
-    "...",
-    "..."
-  ],
-  "recommendations": [
-    "...",
-    "..."
-  ],
-  "feedback": "..."
-}}
-
-Do not wrap the JSON in markdown.
-Do not include any explanation before or after the JSON.
-
+- Overall Score
+- Domain Score
+- Communication Score
+- Strengths
+- Weaknesses
+- Recommendations
+- Feedback
 
 Overall Feedback:
 
