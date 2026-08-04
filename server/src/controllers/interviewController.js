@@ -1,4 +1,4 @@
-import Result from '../models/result.js';
+import Result from '../models/Result.js';
 import Session from '../models/Session.js';
 import { evaluateSession } from '../services/evaluationService.js';
 import { generateNextQuestion } from '../services/interviewService.js';
