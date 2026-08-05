@@ -75,7 +75,7 @@ export const submitAnswerAndNext = async (req, res) => {
         session.currentQuestion++;
         await session.save();
 
-        if (session.currentQuestion >= session.totalQuestions) {
+        if (session.currentQuestion > session.totalQuestions) {
             const result = await evaluateSession(session);
             session.status = "completed";
             session.completedAt = new Date();
@@ -125,7 +125,7 @@ export const abandonInterview= async (req,res)=>{
         session.status= "abandoned";
         session.completedAt= new Date();
         await session.save();
-        const result= await evaluationSession(session);
+        const result= await evaluateSession(session);
         
         await clearHistory(sessionId);
 
