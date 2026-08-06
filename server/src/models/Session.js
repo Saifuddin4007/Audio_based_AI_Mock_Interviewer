@@ -21,7 +21,7 @@ const sessionSchema= new mongoose.Schema({
     },
     totalQuestions: {
         type: Number,
-        default: 10,
+        default: 5,
         min: 1
     },
     currentQuestion: {
