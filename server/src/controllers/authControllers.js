@@ -66,7 +66,7 @@ export const userSignup = async (req, res) => {
         
         const userExist = await User.findOne({ email });
         if (userExist) {
-            return res.status(400).json({ Error: 'User already exists' });
+            return res.status(400).json({ error: 'User already exists' });
 
         }
 
@@ -264,7 +264,7 @@ export const findMe= async (req,res)=>{
             return res.status(404).json({message:"User not found"});
         }
 
-        return res.status(200).json(user);
+        return res.status(200).json({message: "Your User", user});
 
     }catch(err){
         return res.status(500).json({error: err.message});
