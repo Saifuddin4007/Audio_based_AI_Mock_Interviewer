@@ -83,7 +83,7 @@ export const submitAnswerAndNext = async (req, res) => {
 
             await clearHistory(sessionId);
 
-            return res.status(200).json(result);
+            return res.status(200).json({message:"Result", result});
         }
 
         const response = await generateNextQuestion(session, candidateAnswer, history);
@@ -129,7 +129,7 @@ export const abandonInterview= async (req,res)=>{
         
         await clearHistory(sessionId);
 
-        return res.status(200).json(result);
+        return res.status(200).json({message:"After abandon, the result is", result});
 
 
     }catch(err){
