@@ -1,31 +1,16 @@
-import React, { useState } from "react";
+
 import { useAuth } from "../context/AuthContext";
-import { createSession } from "../services/sessionService";
+
 import { useNavigate } from "react-router-dom";
 
 const WelcomePage: React.FC = () => {
-
-  const [sessionMsg, setSessionMsg] = useState<string>("");
-  const [isCreating, setIsCreating] = useState(false);
 
   const navigate = useNavigate();
 
   const { user } = useAuth();
 
-  const handleSession = async (): Promise<void> => {
-    try {
-
-      setSessionMsg("");
-      setIsCreating(true);
-      
-      const res = await createSession();
-      setSessionMsg(res.message);
-      navigate("/interview");
-    } catch {
-      setSessionMsg("Something went wrong");
-    } finally {
-      setIsCreating(false);
-    }
+  const handleSession = ()=> {
+    navigate("/interview");
 
   }
 
@@ -39,13 +24,11 @@ const WelcomePage: React.FC = () => {
         <button
           type="button"
           onClick={handleSession}
-          disabled={isCreating}
           className="cursor-pointer w-full py-2 px-4 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition"
         >
-          {isCreating ? "Creating..." : "Start Interview"}
+          Go To Interview Configuration
         </button>
 
-        {sessionMsg && <p className="mt-6 text-green-400 text-center">{sessionMsg}</p>}
       </div>
     </div>
   );
