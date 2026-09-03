@@ -10,9 +10,9 @@ interface Session {
     focusSkills: string[];
     totalQuestions: number;
     currentQuestion: number;
-    difficulty: string;
-    interviewType: string;
-    status: string;
+    difficulty: Difficulty;
+    interviewType: InterviewType;
+    status: Status;
     questions: Question[];
     createdAt: string;
     completedAt?: string;
@@ -31,9 +31,23 @@ interface Answer {
     answeredAt: string;
 }
 
+
+type Difficulty = "Beginner" | "Early-Intermediate" |"Intermediate" | "Early-Advanced" | "Advanced"  |"Masters" ;
+
+type InterviewType = "Technical" | "Behavioral"| "System-Design" | "Coding" | "DSA" | "HR" ;
+
+type Status=  "in_progress" | "abandoned" | "completed" ;
+
 interface CreateSession {
     sessionId: string;
     message: string;
+}
+interface CreateSessionData {
+    role: string;
+    experienceYears: number;
+    focusSkills: string[];
+    difficulty: Difficulty;
+    interviewType: InterviewType;
 }
 
 interface GetOneSession{
@@ -54,9 +68,9 @@ interface DeleteOneSession {
 interface ApiError {
     message: string;
 }
-export async function createSession(): Promise<CreateSession>{
+export async function createSession({role, experienceYears, focusSkills, difficulty, interviewType}:CreateSessionData ): Promise<CreateSession>{
     try{
-        const response = await api.post<CreateSession>('/api/v1/session/');
+        const response = await api.post<CreateSession>('/api/v1/session/', {role, experienceYears, focusSkills, difficulty, interviewType});
         return response.data;
     }catch(err: unknown){
         if(axios.isAxiosError<ApiError>(err)){
