@@ -4,11 +4,13 @@ import axios from 'axios';
 
 interface StartInterview {
     question: string;
-    message?: string
+    questionNumber: number;
+    message?: string;
 }
 
 interface NextQuestionResponse {
     question: string;
+    questionNumber: number;
 }
 
 interface FinalResultResponse {
