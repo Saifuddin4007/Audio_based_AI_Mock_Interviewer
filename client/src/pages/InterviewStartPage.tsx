@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { abandonInterview, submitAnswerAndNext } from "../services/interviewService";
 
@@ -7,19 +6,20 @@ const InterviewStartPage: React.FC = () => {
   const location = useLocation();
 
   const questionAsked = location.state?.question;
-  const quesNum= location.state?.questionNumber;
+  const quesNum = location.state?.questionNumber;
 
   const [question, setQuestion] = useState<string>(questionAsked ?? "");
   const [candidateAnswer, setCandidateAnswer] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [questionNumber, setQuestionNumber]= useState<number>(quesNum ?? 0);
-  const [seconds, setSeconds]= useState<number>(0);
-  const [isEnding, setIsEnding]= useState<boolean>(false);
+  const [questionNumber, setQuestionNumber] = useState<number>(quesNum ?? 1);
+  const [seconds, setSeconds] = useState<number>(0);
+  const [isEnding, setIsEnding] = useState<boolean>(false);
+  const [hasAnswered, setHasAnswered] = useState<boolean>(false);
 
 
   const { sessionId } = useParams<{ sessionId: string }>();
 
-  const navigate= useNavigate();
+  const navigate = useNavigate();
 
 
   const handleSubmitAnswer = async (): Promise<void> => {
@@ -41,36 +41,45 @@ const InterviewStartPage: React.FC = () => {
         setQuestion(response.question);
         setQuestionNumber(response.questionNumber);
         setCandidateAnswer("");
-      }else{
+      } else {
         navigate(`/result/${sessionId}`);
       }
 
-    } catch {
-      console.log("Error submitting answer");
+      setHasAnswered(true);
+
+    } catch (err) {
+      // console.log("Error submitting answer");
+      console.error("Error submitting answer: ", err);
     } finally {
       setIsSubmitting(false);
     }
   }
 
 
-  const handleEndInterview= async ()=>{
-    try{
+  const handleEndInterview = async () => {
+
+    if (!hasAnswered) {
+      alert("Please answer at least one question before ending the interview");
+      return;
+    }
+
+    try {
       setIsEnding(true);
-      if(sessionId){
-        const abandonRes= await abandonInterview(sessionId);
-        
-        if(abandonRes){
+      if (sessionId) {
+        const abandonRes = await abandonInterview(sessionId);
+
+        if (abandonRes) {
           navigate(`/result/${sessionId}`);
         }
       }
-    }catch{
+    } catch {
       console.log("Error abandoning interview");
-    }finally{
+    } finally {
       setIsEnding(false);
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     // Start timer when component mounts
     const interval = setInterval(() => {
       setSeconds((prev) => prev + 1);
@@ -103,11 +112,11 @@ const InterviewStartPage: React.FC = () => {
           </div>
           <div className="flex items-center space-x-6">
             <div className="text-gray-700">Internal Time: {formatTime(seconds)}</div>
-            <button 
-              className="py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+            <button
+              className="py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition cursor-pointer"
               onClick={handleEndInterview}
               disabled={isEnding}
-              >
+            >
               End Interview
             </button>
           </div>
@@ -123,10 +132,10 @@ const InterviewStartPage: React.FC = () => {
 
         {/* AI Model Section */}
         <div className="bg-white shadow-md rounded-lg p-10 flex flex-col items-center space-y-4">
-          <div className="w-32 h-32 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg">
-            <span className="text-white text-3xl">🎤</span>
+          <div className="w-32 h-32 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg overflow-hidden">
+            <img src="/robo.png" className="w-full h-full object-cover" alt="AI Robo" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-700">AI Model Name</h3>
+          <h3 className="text-lg font-semibold text-gray-700">AI Interviewer</h3>
         </div>
 
         {/* Answer Section */}
@@ -145,12 +154,12 @@ const InterviewStartPage: React.FC = () => {
           {/* Recorder + Submit */}
           <div className="flex items-center justify-between">
             <div className="flex space-x-4">
-              <button className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow hover:bg-indigo-600 transition">
+              <button className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow hover:bg-indigo-600 transition cursor-pointer">
                 🎤
               </button>
             </div>
             <button
-              className="py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition"
+              className="py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
               onClick={handleSubmitAnswer}
               disabled={isSubmitting}
             >
@@ -159,9 +168,6 @@ const InterviewStartPage: React.FC = () => {
           </div>
         </div>
       </main>
-
-      {/* Sidebar on Right */}
-      <Sidebar />
     </div>
   );
 };
