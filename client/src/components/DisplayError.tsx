@@ -1,10 +1,32 @@
-import React from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
 
 interface ErrorProps {
     error: string;
+    isResultPage: boolean;
+    goBackPath?: string;
 }
 
-const DisplayError = ({error}: ErrorProps) => {
+const DisplayError = ({error, isResultPage, goBackPath}: ErrorProps) => {
+
+  const { sessionId }= useParams<{sessionId: string}>();
+
+  const navigate= useNavigate();
+
+  const handleGoBack= () =>{
+    if(goBackPath){
+      navigate(goBackPath);
+      return;
+    }
+
+    if(sessionId){
+      navigate(`/result/${sessionId}`);
+      return;
+    }
+
+    navigate("/welcome");
+  }
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-orange-50 flex items-center justify-center p-6">
       <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl p-10 text-center border border-red-100">
@@ -35,12 +57,32 @@ const DisplayError = ({error}: ErrorProps) => {
 
         {/* Action Buttons (No logic attached) */}
         <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-          <button className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors font-medium">
+          {
+            isResultPage ? (
+              <button 
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all font-medium"
+                onClick={()=> window.location.reload()}
+                >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Try Again</span>
+          </button>
+            ) : (
+              <button 
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+                onClick={handleGoBack}
+                >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             <span>Go Back</span>
           </button>
+            )
+          }
+          
+
+          
         </div>
 
       </div>
