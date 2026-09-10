@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Result } from "../types/result";
 import { getOneResult } from "../services/resultService";
+import DisplayError from "../components/DisplayError";
+
 
 const Feedback: React.FC = () => {
 
@@ -48,7 +50,7 @@ const Feedback: React.FC = () => {
   }
 
   if(error){
-    return <div>{error}</div>;
+    return <DisplayError error={error} isResultPage={false} />
   }
 
   return (
