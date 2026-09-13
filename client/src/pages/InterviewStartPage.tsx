@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { abandonInterview, submitAnswerAndNext } from "../services/interviewService";
+import { getOneSession } from "../services/sessionService";
 
 const InterviewStartPage: React.FC = () => {
   const location = useLocation();
@@ -15,6 +16,7 @@ const InterviewStartPage: React.FC = () => {
   const [seconds, setSeconds] = useState<number>(0);
   const [isEnding, setIsEnding] = useState<boolean>(false);
   const [hasAnswered, setHasAnswered] = useState<boolean>(false);
+  const [isCheckingSession, setIsCheckingSession]= useState<boolean>(true);
 
 
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -37,15 +39,15 @@ const InterviewStartPage: React.FC = () => {
       setIsSubmitting(true);
       const response = await submitAnswerAndNext(sessionId, candidateAnswer);
 
+      setHasAnswered(true);
+
       if ("question" in response) {
         setQuestion(response.question);
         setQuestionNumber(response.questionNumber);
         setCandidateAnswer("");
       } else {
-        navigate(`/result/${sessionId}`);
+        navigate(`/result/${sessionId}`, { replace: true });
       }
-
-      setHasAnswered(true);
 
     } catch (err) {
       // console.log("Error submitting answer");
@@ -69,7 +71,7 @@ const InterviewStartPage: React.FC = () => {
         const abandonRes = await abandonInterview(sessionId);
 
         if (abandonRes) {
-          navigate(`/result/${sessionId}`);
+          navigate(`/result/${sessionId}`, { replace: true });
         }
       }
     } catch {
@@ -97,6 +99,44 @@ const InterviewStartPage: React.FC = () => {
       .toString()
       .padStart(2, "0")}`;
   };
+
+  useEffect(() => {
+    const checkSessionStatus = async () => {
+      if (!sessionId){
+        setIsCheckingSession(false);
+        return;
+      }
+
+      try {
+        const res = await getOneSession(sessionId);
+
+        if (res.session.status === "completed") {
+          navigate(`/result/${sessionId}`, { replace: true });
+          return;
+        }
+
+        if (res.session.status === "abandoned") {
+          navigate(`/result/${sessionId}`, { replace: true });
+          return;
+        }
+      }catch(err){
+        console.error(err);
+      }finally{
+        setIsCheckingSession(false);
+      }
+    }
+
+    checkSessionStatus();
+  }, [sessionId, navigate]);
+
+
+  if (isCheckingSession) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p>Checking interview session...</p>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen flex bg-gray-50">
