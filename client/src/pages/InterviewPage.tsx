@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar"; // import the new component
 import { startInterview } from "../services/interviewService";
 import { createSession } from "../services/sessionService";
+import type { Difficulty, InterviewType } from "../types/session";
 
 const InterviewPage: React.FC = () => {
   const [role, setRole] = useState<string>("");
@@ -13,10 +13,6 @@ const InterviewPage: React.FC = () => {
   const [isStarting, setIsStarting] = useState<boolean>(false);
 
   const navigate = useNavigate();
-
-  type Difficulty = "Beginner" | "Early-Intermediate" | "Intermediate" | "Early-Advanced" | "Advanced" | "Masters";
-
-  type InterviewType = "Technical" | "Behavioral" | "System-Design" | "Coding" | "DSA" | "HR";
 
 
   // placeholder for your logic later
@@ -60,7 +56,8 @@ const InterviewPage: React.FC = () => {
           navigate(`/interview/start/${sessionId}`, {
             state: {
               question: interviewRes.question
-            }
+            },
+            replace: true,
           });
         }
       }
@@ -73,8 +70,6 @@ const InterviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Sidebar Component */}
-      <Sidebar />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-start p-10">
@@ -86,7 +81,7 @@ const InterviewPage: React.FC = () => {
         </p>
 
         <button
-          className="mb-10 py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition"
+          className="mb-10 py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
           onClick={handleInterview}
           disabled={isStarting}
         >
