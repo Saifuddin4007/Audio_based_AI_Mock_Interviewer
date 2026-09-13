@@ -46,7 +46,7 @@ const Signup: React.FC = () => {
     try {
       const res = await signup(email, paswd);
       if (res) {
-        navigate('/login');
+        navigate('/login', {replace: true});
       }
     } catch {
       setSignupResShow("Signup Failed")
