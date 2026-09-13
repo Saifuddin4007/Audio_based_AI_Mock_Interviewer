@@ -48,7 +48,7 @@ const Login: React.FC = () => {
     try {
       await login(customEmail, paswd);
 
-      navigate("/welcome");
+      navigate("/welcome", {replace: true});
 
     } catch {
       setLoginResShow("Login Failed")
