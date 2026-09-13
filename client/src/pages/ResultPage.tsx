@@ -3,14 +3,19 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getOneResult } from "../services/resultService";
 import type { Result } from "../types/result";
 import Sidebar from "../components/Sidebar";
+import DisplayError from "../components/DisplayError";
+import { downloadInterviewResult } from "../services/exportService";
 
-
+type ExportFormat= 'pdf' | 'docx';
 
 const ResultPage: React.FC = () => {
 
   const [result, setResult] = useState<Result | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [format, setFormat] = useState<ExportFormat>('pdf');
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
 
   const { sessionId } = useParams<{ sessionId: string }>();
 
@@ -50,6 +55,30 @@ const ResultPage: React.FC = () => {
     navigate(`/feedback/${sessionId}`);
   }
 
+  const handleDownload= async ()=>{
+    try{
+      if(!sessionId) return;
+      setDownloadError(null);
+      setIsDownloading(true);
+      const blob= await downloadInterviewResult(sessionId, format);
+
+      const url= window.URL.createObjectURL(blob);
+      const link= document.createElement('a');
+      link.href= url;
+      link.download= `interview-result-${sessionId}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }catch(err){
+      setDownloadError(err instanceof Error ? err.message : "failed to download result");
+      console.error(err);
+    }finally{
+      setIsDownloading(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -61,8 +90,9 @@ const ResultPage: React.FC = () => {
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <DisplayError error={error} isResultPage={true}/>
   }
+
 
 
   return (
@@ -373,18 +403,25 @@ const ResultPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                  <select className="px-6 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white text-gray-700 font-medium">
-                    <option value="">Select Format</option>
+                  <select 
+                    className="px-6 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white text-gray-700 font-medium"
+                    onChange={(e)=> setFormat(e.target.value as ExportFormat)}
+                    >
                     <option value="pdf">📄 PDF Document</option>
-                    <option value="doc">📝 Word Document</option>
+                    <option value="docx">📝 Word Document</option>
                   </select>
 
-                  <button className="flex items-center space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all font-semibold cursor-pointer">
+                  <button 
+                    className="flex items-center space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all font-semibold cursor-pointer"
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span>Download</span>
+                    <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
                   </button>
+                  {downloadError && <p>{downloadError}</p>}
                 </div>
               </div>
             </div>
