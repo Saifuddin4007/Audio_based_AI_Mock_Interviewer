@@ -1,3 +1,4 @@
+import type { ApiError } from '../types/error';
 import api from './api';
 import axios from 'axios';
 
@@ -38,10 +39,7 @@ interface Findme {
     message: string;
 }
 
-interface ApiError {
-    message: string;
-    error?: string;
-}
+
 
 export async function signup(email:string, password:string): Promise<Signup>{
     try{
@@ -96,7 +94,7 @@ export async function logout(): Promise<Logout>{
 
 export async function findme(): Promise<Findme>{
     try{
-        const response= await api.get<Findme>('/api/v1/auth/findme');
+        const response= await api.get<Findme>('/api/v1/auth/me');
         return response.data;
     }catch(err:unknown){
         if (axios.isAxiosError<ApiError>(err)) {
