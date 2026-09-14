@@ -1,3 +1,5 @@
+import type { ApiError } from '../types/error';
+import type { Result } from '../types/result';
 import api from './api';
 import axios from 'axios';
 
@@ -25,60 +27,7 @@ interface AbandonInterview {
     result: Result;
 }
 
-interface Result {
-    _id: string;
-    session: Session;
-    overallScore: number;
-    domainScore: number;
-    communicationScore: number;
-    feedback: string;
-    isPartialEvaluation: boolean;
-    strengths: string[];
-    weaknesses: string[];
-    recommendations: string[];
-    modelUsed: string;
-    createdAt: string;
 
-}
-
-interface Session {
-    _id: string;
-    user: string;
-    role: string;
-    experienceYears: number;
-    focusSkills: string[];
-    totalQuestions: number;
-    currentQuestion: number;
-    difficulty: Difficulty;
-    interviewType: InterviewType;
-    status: Status;
-    questions: Question[];
-    createdAt: string;
-    completedAt?: string;
-}
-
-interface Question {
-    _id: string;
-    questionNumber: number;
-    questionText: string;
-    answer?: Answer;
-}
-
-interface Answer {
-    audioURL: string | null;
-    transcript: string;
-    answeredAt: string;
-}
-
-type Difficulty = "Beginner" | "Early-Intermediate" |"Intermediate" | "Early-Advanced" | "Advanced"  |"Masters" ;
-
-type InterviewType = "Technical" | "Behavioral"| "System-Design" | "Coding" | "DSA" | "HR" ;
-
-type Status=  "in_progress" | "abandoned" | "completed" ;
-
-interface ApiError {
-    message: string;
-}
 
 
 export async function startInterview(sessionId: string): Promise<StartInterview> {
