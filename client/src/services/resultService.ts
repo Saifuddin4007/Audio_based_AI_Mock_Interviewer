@@ -1,6 +1,7 @@
 import api from "./api";
 import axios from 'axios';
-
+import type { Result } from '../types/result'
+import type { ApiError } from "../types/error";
 
 interface GetOneResult {
     result: Result;
@@ -13,54 +14,6 @@ interface GetAllResults {
 }
 
 
-interface Result {
-    _id: string;
-    session: Session;
-    overallScore: number;
-    domainScore: number;
-    communicationScore: number;
-    feedback: string;
-    isPartialEvaluation: boolean;
-    strengths: string[];
-    weaknesses: string[];
-    recommendations: string[];
-    modelUsed: string;
-    createdAt: string;
-
-}
-
-interface Session {
-    _id: string;
-    user: string;
-    role: string;
-    experienceYears: number;
-    focusSkills: string[];
-    totalQuestions: number;
-    currentQuestion: number;
-    difficulty: string;
-    interviewType: string;
-    status: string;
-    questions: Question[];
-    createdAt: string;
-    completedAt?: string;
-}
-
-interface Question {
-    _id: string;
-    questionNumber: number;
-    questionText: string;
-    answer?: Answer;
-}
-
-interface Answer {
-    audioURL: string | null;
-    transcript: string;
-    answeredAt: string;
-}
-
-interface ApiError {
-    message: string;
-}
 
 
 export async function getOneResult(sessionId:string): Promise<GetOneResult>{
