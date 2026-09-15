@@ -1,42 +1,9 @@
+import type { ApiError } from "../types/error";
+import type { Difficulty, InterviewType } from "../types/session";
+import type { Session } from "../types/session";
 import api from "./api";
 import axios from "axios";
 
-
-interface Session {
-    _id: string;
-    user: string;
-    role: string;
-    experienceYears: number;
-    focusSkills: string[];
-    totalQuestions: number;
-    currentQuestion: number;
-    difficulty: Difficulty;
-    interviewType: InterviewType;
-    status: Status;
-    questions: Question[];
-    createdAt: string;
-    completedAt?: string;
-}
-
-interface Question {
-    _id: string;
-    questionNumber: number;
-    questionText: string;
-    answer?: Answer;
-}
-
-interface Answer {
-    audioURL: string | null;
-    transcript: string;
-    answeredAt: string;
-}
-
-
-type Difficulty = "Beginner" | "Early-Intermediate" |"Intermediate" | "Early-Advanced" | "Advanced"  |"Masters" ;
-
-type InterviewType = "Technical" | "Behavioral"| "System-Design" | "Coding" | "DSA" | "HR" ;
-
-type Status=  "in_progress" | "abandoned" | "completed" ;
 
 interface CreateSession {
     sessionId: string;
@@ -65,9 +32,6 @@ interface DeleteOneSession {
 }
 
 
-interface ApiError {
-    message: string;
-}
 export async function createSession({role, experienceYears, focusSkills, difficulty, interviewType}:CreateSessionData ): Promise<CreateSession>{
     try{
         const response = await api.post<CreateSession>('/api/v1/session/', {role, experienceYears, focusSkills, difficulty, interviewType});
