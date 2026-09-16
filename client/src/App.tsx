@@ -8,7 +8,7 @@ import ResultPage from "./pages/ResultPage"
 import QuestionAndAnswer from "./pages/QuestionAndAnswer"
 import Feedback from "./pages/Feedback"
 import SessionsPage from "./pages/SessionsPage"
-
+import ProtectedRoute from "./components/ProtectedRoute"
 
 
 
@@ -20,60 +20,67 @@ function App() {
 
   return (
     <>
-    <BrowserRouter>
-      <Routes>
+      <BrowserRouter>
+        <Routes>
 
-        <Route
-          path= "/"
-          element= {< Navigate to="/login" replace />}
-        />
+          <Route
+            path="/"
+            element={< Navigate to="/login" replace />}
+          />
 
-        <Route
-          path= "/sessions"
-          element= {<SessionsPage />}
-        />
+          <Route
+            path="/login"
+            element={<Login />}
+          />
 
-        <Route
-          path= "/questions/:sessionId"
-          element= {<QuestionAndAnswer />}
-        />
+          <Route
+            path="/signup"
+            element={<Signup />}
+          />
 
-        <Route
-          path= "/feedback/:sessionId"
-          element= {<Feedback />}
-        />
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/sessions"
+              element={<SessionsPage />}
+            />
 
-        <Route
-          path= "/result/:sessionId"
-          element= {<ResultPage />}
-        />
+            <Route
+              path="/questions/:sessionId"
+              element={<QuestionAndAnswer />}
+            />
 
-        <Route
-          path= "/interview/start/:sessionId"
-          element= {<InterviewStartPage />}
-        />
+            <Route
+              path="/feedback/:sessionId"
+              element={<Feedback />}
+            />
 
-        <Route
-          path="/interview"
-          element= {<InterviewPage />}
-        />
+            <Route
+              path="/result/:sessionId"
+              element={<ResultPage />}
+            />
 
-        <Route
-          path="/welcome"
-          element= {<WelcomePage/>}
-        />
+            <Route
+              path="/interview/start/:sessionId"
+              element={<InterviewStartPage />}
+            />
 
-        <Route
-          path="/login"
-          element= {<Login/>}
-        />
+            <Route
+              path="/interview"
+              element={<InterviewPage />}
+            />
 
-        <Route
-          path="/signup"
-          element= {<Signup/>}
-        />
-      </Routes>
-    </BrowserRouter> 
+            <Route
+              path="/welcome"
+              element={<WelcomePage />}
+            />
+
+          </Route>
+
+
+
+
+        </Routes>
+      </BrowserRouter>
     </>
   )
 }
