@@ -64,7 +64,11 @@ const sessionSchema= new mongoose.Schema({
     },
     questions: [
         {
-            questionNumber: Number,
+            questionNumber: {
+                type: Number,
+                required: true,
+                min: 1
+            },
             questionText: {
                 type: String,
                 required: true
