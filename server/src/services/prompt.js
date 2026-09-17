@@ -116,6 +116,14 @@ Evaluate the candidate and provide:
 - Recommendations
 - Feedback
 
+Output constraints:
+- Provide exactly 3 strengths.
+- Provide exactly 3 weaknesses.
+- Provide exactly 3 recommendations.
+- Keep each strength, weakness, and recommendation concise.
+- Keep feedback concise, between 2 and 4 sentences.
+- Do not repeat the interview questions or candidate answers.
+
 Overall Feedback:
 
 Be objective.
