@@ -5,11 +5,18 @@ import authRoutes from './src/routes/authRoutes.js';
 import sessionRoutes from './src/routes/sessionRoutes.js';
 import interviewRoutes from './src/routes/interviewRoutes.js';
 import resultRoutes from './src/routes/resultRoutes.js';
+import exportRoutes from './src/routes/exportRoutes.js';
+import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
 
 
 const app= express();
+
+app.use(cors({
+    origin: 'http://localhost:5173', 
+    credentials: true // Required if you are sending cookies/auth headers
+}));
 
 //middlewares
 app.use(express.json());
@@ -21,6 +28,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/session', sessionRoutes);
 app.use('/api/v1/interview', interviewRoutes);
 app.use('/api/v1/result', resultRoutes);
+app.use('/api/v1/export', exportRoutes);
 
 
 
