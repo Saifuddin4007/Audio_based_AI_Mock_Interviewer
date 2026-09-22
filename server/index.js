@@ -6,6 +6,8 @@ import sessionRoutes from './src/routes/sessionRoutes.js';
 import interviewRoutes from './src/routes/interviewRoutes.js';
 import resultRoutes from './src/routes/resultRoutes.js';
 import exportRoutes from './src/routes/exportRoutes.js';
+import speechRoutes from './src/routes/speechRoutes.js';
+import { errorHandler } from './src/middlewares/multerErrorHandler.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -29,8 +31,9 @@ app.use('/api/v1/session', sessionRoutes);
 app.use('/api/v1/interview', interviewRoutes);
 app.use('/api/v1/result', resultRoutes);
 app.use('/api/v1/export', exportRoutes);
+app.use('/api/v1/speech', speechRoutes);
 
-
+app.use(errorHandler);
 
 
 
