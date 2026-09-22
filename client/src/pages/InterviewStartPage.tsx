@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { abandonInterview, submitAnswerAndNext } from "../services/interviewService";
 import { getOneSession } from "../services/sessionService";
+import AIInterviewRecorder from "../components/AIInterviewRecorder";
 
 const InterviewStartPage: React.FC = () => {
   const location = useLocation();
@@ -194,9 +195,7 @@ const InterviewStartPage: React.FC = () => {
           {/* Recorder + Submit */}
           <div className="flex items-center justify-between">
             <div className="flex space-x-4">
-              <button className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow hover:bg-indigo-600 transition cursor-pointer">
-                🎤
-              </button>
+              <AIInterviewRecorder />
             </div>
             <button
               className="py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
