@@ -71,10 +71,11 @@ export const deleteOneSession= async (req,res)=>{
     try{
         const { sessionId }= req.params;
         if(!sessionId){
-            return res.status(400).json({message:"Unauthorized"});
+            return res.status(400).json({message:"SessionId is required"});
         }
 
-        const session= await Session.findByIdAndDelete(sessionId);
+        const session= await Session.findById(sessionId);
+
         if(!session){
             return res.status(404).json({message:"Session not found"});
         }
@@ -82,6 +83,8 @@ export const deleteOneSession= async (req,res)=>{
         if(session.user.toString() !== req.userId){
             return res.status(403).json({message:"Unauthorized User"});
         }
+
+        await Session.findByIdAndDelete(sessionId);
 
         return res.status(200).json({message:"Session deleted"});
 
