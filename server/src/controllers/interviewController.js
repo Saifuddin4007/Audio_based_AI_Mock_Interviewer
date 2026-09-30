@@ -18,6 +18,11 @@ export const startInterview = async (req, res) => {
         if (session.user.toString() !== req.userId) {
             return res.status(403).json({ message: "Unauthorized" });
         }
+        if (session.status !== "in_progress") {
+            deleteTempFile(filePath);
+            return res.status(400).json({ message: "Interview is not active" });
+        }
+
 
         if (session.questions.length > 0) {
             return res.status(400).json({ message: "Interview already started..." });
@@ -27,12 +32,12 @@ export const startInterview = async (req, res) => {
         session.currentQuestion++;
         const response = await generateNextQuestion(session, "", history);
 
-        session.questions.push({ questionText: response.content });
+        session.questions.push({ questionNumber: session.currentQuestion, questionText: response.content });
         await session.save();
 
         await saveTurn(sessionId, null, response.content);
 
-        return res.status(200).json({ question: response.content });
+        return res.status(200).json({ question: response.content, questionNumber: session.currentQuestion });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -56,8 +61,8 @@ export const submitAnswerAndNext = async (req, res) => {
             return res.status(403).json({ message: "Unauthorized" });
         }
 
-        if (session.status === "completed") {
-            return res.status(400).json({ message: "Interview already completed" });
+        if (session.status !== "in_progress") {
+            return res.status(400).json({ message: "Interview is not active" });
         }
 
         //!Modify or insert the candidateAnswer into the questions.answers array
@@ -83,17 +88,17 @@ export const submitAnswerAndNext = async (req, res) => {
 
             await clearHistory(sessionId);
 
-            return res.status(200).json({message:"Result", result});
+            return res.status(200).json({ message: "Result", result });
         }
 
         const response = await generateNextQuestion(session, candidateAnswer, history);
 
-        session.questions.push({ questionText: response.content });
+        session.questions.push({ questionNumber: session.currentQuestion, questionText: response.content });
         await session.save();
 
         await saveTurn(sessionId, candidateAnswer, response.content);
 
-        return res.status(200).json({ question: response.content });
+        return res.status(200).json({ question: response.content, questionNumber: session.currentQuestion });
 
 
     } catch (err) {
@@ -103,36 +108,36 @@ export const submitAnswerAndNext = async (req, res) => {
 
 
 
-export const abandonInterview= async (req,res)=>{
-    try{
-        const { sessionId }= req.body;
+export const abandonInterview = async (req, res) => {
+    try {
+        const { sessionId } = req.body;
 
-        const session= await Session.findById(sessionId);
-        if(!session){
-            return res.status(404).json({message:"Session not found"});
+        const session = await Session.findById(sessionId);
+        if (!session) {
+            return res.status(404).json({ message: "Session not found" });
         }
-        if(session.user.toString()!==req.userId){
-            return res.status(403).json({message:"Unauthorized"});
+        if (session.user.toString() !== req.userId) {
+            return res.status(403).json({ message: "Unauthorized" });
         }
-        if(session.status !== "in_progress"){
-            return res.status(400).json({message:"Interview already ended"});
-        }
-
-        if(session.questions.length===0){
-            return res.status(400).json({message:"Interview not started"});
+        if (session.status !== "in_progress") {
+            return res.status(400).json({ message: "Interview already ended" });
         }
 
-        session.status= "abandoned";
-        session.completedAt= new Date();
+        if (session.questions.length === 0) {
+            return res.status(400).json({ message: "Interview not started" });
+        }
+
+        session.status = "abandoned";
+        session.completedAt = new Date();
         await session.save();
-        const result= await evaluateSession(session);
-        
+        const result = await evaluateSession(session);
+
         await clearHistory(sessionId);
 
-        return res.status(200).json({message:"After abandon, the result is", result});
+        return res.status(200).json({ message: "After abandon, the result is", result });
 
 
-    }catch(err){
+    } catch (err) {
         return res.status(500).json({ message: err.message });
     }
 }
