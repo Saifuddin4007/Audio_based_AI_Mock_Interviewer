@@ -70,7 +70,6 @@ const InterviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-start p-10">
         <h1 className="text-4xl font-bold text-gray-800 mb-2 text-center">
@@ -87,7 +86,7 @@ const InterviewPage: React.FC = () => {
         >
           Start Interview
         </button>
-
+        { [ "DSA", "Coding", "System-Design" ].includes(interviewType) ? <p className="w-full bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md shadow-sm">{`  📌 NOTE: You have chosen ${interviewType} Interview, so please use text-based interview format`}</p> : null}
         {/* Form Section */}
         <div className="w-full max-w-2xl bg-white shadow-md rounded-lg p-8 space-y-6">
           {/* Role */}
