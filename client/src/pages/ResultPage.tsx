@@ -5,6 +5,7 @@ import type { Result } from "../types/result";
 import Sidebar from "../components/Sidebar";
 import DisplayError from "../components/DisplayError";
 import { downloadInterviewResult } from "../services/exportService";
+import axios from "axios";
 
 type ExportFormat= 'pdf' | 'docx';
 
@@ -16,6 +17,7 @@ const ResultPage: React.FC = () => {
   const [format, setFormat] = useState<ExportFormat>('pdf');
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [isNotFound, setIsNotFound] = useState<boolean>(false);
 
   const { sessionId } = useParams<{ sessionId: string }>();
 
@@ -35,6 +37,11 @@ const ResultPage: React.FC = () => {
         setResult(result);
 
       } catch (err) {
+        const casuse= err instanceof Error ? err.cause : undefined;
+        if(axios.isAxiosError(casuse) && casuse.response?.status === 404){
+          setIsNotFound(true);
+          return;
+        }
         setError(err instanceof Error ? err.message : "failed to load result");
       } finally {
         setIsLoading(false);
@@ -88,6 +95,56 @@ const ResultPage: React.FC = () => {
       </div>
     )
   }
+
+ if (isNotFound) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full text-center">
+        {/* Icon */}
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
+          <svg
+            className="h-10 w-10 text-red-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+            />
+          </svg>
+        </div>
+
+        {/* Text */}
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Session No Longer Available
+        </h2>
+        <p className="text-gray-500 mb-8 leading-relaxed">
+          This interview session or its result may have been deleted.
+        </p>
+
+        {/* Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            onClick={() => navigate('/welcome')}
+          >
+            Go To Welcome Page
+          </button>
+          <button
+            className="bg-white hover:bg-gray-50 text-gray-700 px-6 py-2.5 rounded-lg font-medium border border-gray-300 transition-colors shadow-sm"
+            onClick={() => navigate('/sessions')}
+          >
+            Go To Sessions Page
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+  
 
   if (error) {
     return <DisplayError error={error} isResultPage={true}/>
