@@ -3,6 +3,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { abandonInterview, submitAnswerAndNext } from "../services/interviewService";
 import { getOneSession } from "../services/sessionService";
 import AIInterviewRecorder from "../components/AIInterviewRecorder";
+import { uploadAudio } from "../services/speechService";
+import DisplayError from "../components/DisplayError";
+
 
 const InterviewStartPage: React.FC = () => {
   const location = useLocation();
@@ -17,7 +20,13 @@ const InterviewStartPage: React.FC = () => {
   const [seconds, setSeconds] = useState<number>(0);
   const [isEnding, setIsEnding] = useState<boolean>(false);
   const [hasAnswered, setHasAnswered] = useState<boolean>(false);
-  const [isCheckingSession, setIsCheckingSession]= useState<boolean>(true);
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioFileName, setAudioFileName] = useState<string>("");
+  const [recorderKey, setRecorderKey] = useState<number>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [sessionError, setSessionError] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
 
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -53,11 +62,75 @@ const InterviewStartPage: React.FC = () => {
     } catch (err) {
       // console.log("Error submitting answer");
       console.error("Error submitting answer: ", err);
+      if (err instanceof Error) {
+        setError(err.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  const handleRecordingComplete = (blob: Blob, fileName: string) => {
+    setAudioBlob(blob);
+    setAudioFileName(fileName);
+    console.log("Parent received audio:", fileName, blob.size, "bytes");
+  };
+
+  const handleRecordingStart = () => {
+    setCandidateAnswer("");
+  }
+
+  const handleAudioAnswer = async () => {
+    if (!audioBlob || !audioFileName) {
+      alert("Please record first.");
+      return;
+    }
+
+    if (!sessionId) {
+      alert("Invalid Interview session");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // This calls the speechService we fixed earlier
+      const uploadResponse = await uploadAudio(sessionId, audioBlob, audioFileName);
+      console.log("Upload successful:", uploadResponse);
+
+      setHasAnswered(true);
+
+      if ("question" in uploadResponse) {
+        setQuestion(uploadResponse.question);
+        setQuestionNumber(uploadResponse.questionNumber);
+
+        setAudioBlob(null);
+        setAudioFileName("");
+        setRecorderKey((prevKey) => prevKey + 1);
+      } else {
+        navigate(`/result/${sessionId}`, { replace: true });
+      }
+
+
+
+    } catch (err) {
+      console.error("Error submitting answer: ", err);
+      alert("Failed to submit answer.");
+      if (err instanceof Error){
+        setError(err.message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const hasAudioAnswer = audioBlob !== null;
+
+
+  const handleRecordingDiscard= ()=>{
+    setAudioBlob(null);
+    setAudioFileName("");
+  }
 
   const handleEndInterview = async () => {
 
@@ -103,7 +176,7 @@ const InterviewStartPage: React.FC = () => {
 
   useEffect(() => {
     const checkSessionStatus = async () => {
-      if (!sessionId){
+      if (!sessionId) {
         setIsCheckingSession(false);
         return;
       }
@@ -120,9 +193,10 @@ const InterviewStartPage: React.FC = () => {
           navigate(`/result/${sessionId}`, { replace: true });
           return;
         }
-      }catch(err){
+      } catch (err) {
         console.error(err);
-      }finally{
+        setSessionError(true);
+      } finally {
         setIsCheckingSession(false);
       }
     }
@@ -131,13 +205,17 @@ const InterviewStartPage: React.FC = () => {
   }, [sessionId, navigate]);
 
 
+  if (sessionError) {
+    return <DisplayError error={error ? error : 'Invalid session'} isResultPage={false} goBackPath="/welcome" />
+  }
+
   if (isCheckingSession) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p>Checking interview session...</p>
-    </div>
-  );
-}
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Checking interview session...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -156,7 +234,7 @@ const InterviewStartPage: React.FC = () => {
             <button
               className="py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition cursor-pointer"
               onClick={handleEndInterview}
-              disabled={isEnding}
+              disabled={isEnding || isSubmitting || isRecording}
             >
               End Interview
             </button>
@@ -185,24 +263,27 @@ const InterviewStartPage: React.FC = () => {
             Type your Answer
           </label>
           <textarea
-            placeholder="Write your answer here..."
             className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+            disabled={isRecording || hasAudioAnswer}
             value={candidateAnswer}
             onChange={(e) => setCandidateAnswer(e.target.value)}
+            placeholder={
+              hasAudioAnswer ? "Audio mode selected. Discard the recording to type an answer." : "Type your answer here..."
+            }
             rows={4}
           ></textarea>
 
           {/* Recorder + Submit */}
           <div className="flex items-center justify-between">
             <div className="flex space-x-4">
-              <AIInterviewRecorder />
+              <AIInterviewRecorder key={recorderKey} onRecordingStateChange={setIsRecording} onRecordingStart={handleRecordingStart} onRecordingComplete={handleRecordingComplete} onRecordingDiscard= {handleRecordingDiscard}/>
             </div>
             <button
               className="py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
-              onClick={handleSubmitAnswer}
-              disabled={isSubmitting}
+              onClick={hasAudioAnswer ? handleAudioAnswer : handleSubmitAnswer}
+              disabled={isSubmitting || isRecording}
             >
-              Submit Answer
+              {hasAudioAnswer ? "Submit Audio" : "Submit Text"}
             </button>
           </div>
         </div>
