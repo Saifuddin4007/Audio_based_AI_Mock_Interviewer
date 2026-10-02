@@ -26,8 +26,8 @@ export const getOneResult= async(req,res)=>{
         const result= await Result.findOne({
             session: sessionId
         }).populate("session");
-        if(!result){
-            return res.status(404).json({message: "No result found"});
+        if(!result || !result.session){
+            return res.status(404).json({message: "No result or session found"});
         }
 
         if(result.session.user.toString() !== req.userId){
