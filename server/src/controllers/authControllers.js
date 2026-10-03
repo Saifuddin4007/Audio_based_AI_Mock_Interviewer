@@ -59,7 +59,7 @@ export const userSignup = async (req, res) => {
         if(!email.includes('@') ||!email.endsWith('.com')){
             return res.status(400).json({error:"Email format is wrong, provide proper email"});
         }
-        if(password.length<=8){
+        if(password.length < 8){
             return res.status(400).json({error:"Password is less than 8 characters, password must be 8 characters or more"});
         }
 
