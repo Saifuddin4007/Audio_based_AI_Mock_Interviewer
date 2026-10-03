@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import { ChatGroq } from '@langchain/groq';
 
-export const MODEL_USED= "llama-3.3-70b-versatile";
+export const MODEL_USED= "openai/gpt-oss-120b";
 
 
 const llm= new ChatGroq({
@@ -16,7 +16,9 @@ const llm= new ChatGroq({
    model: MODEL_USED,
    temperature: 0.6,
    maxRetries: 2,
-   maxTokens: 200 
+   // maxTokens: 200
+   maxTokens: 1000
+
 });
 
 export default llm;
