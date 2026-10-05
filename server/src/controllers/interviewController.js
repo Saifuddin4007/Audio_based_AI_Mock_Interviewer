@@ -37,7 +37,18 @@ export const startInterview = async (req, res) => {
 
         await saveTurn(sessionId, null, response.content);
 
-        return res.status(200).json({ question: response.content, questionNumber: session.currentQuestion });
+        const questionSpeech = await generateSpeech(response.content);
+        if (!Buffer.isBuffer(questionSpeech) || questionSpeech.length === 0) {
+            return res.status(500).json({ message: "Failed to generate speech for the question." });
+        }
+        const audioBase64 = questionSpeech.toString("base64");
+
+        return res.status(200).json({ 
+            question: response.content, 
+            questionNumber: session.currentQuestion, 
+            audio: audioBase64,
+            audioMimeType: "audio/wav" 
+        });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -98,7 +109,18 @@ export const submitAnswerAndNext = async (req, res) => {
 
         await saveTurn(sessionId, candidateAnswer, response.content);
 
-        return res.status(200).json({ question: response.content, questionNumber: session.currentQuestion });
+        const questionSpeech = await generateSpeech(response.content);
+        if (!Buffer.isBuffer(questionSpeech) || questionSpeech.length === 0) {
+            return res.status(500).json({ message: "Failed to generate speech for the question." });
+        }
+        const audioBase64 = questionSpeech.toString("base64");
+
+        return res.status(200).json({ 
+            question: response.content, 
+            questionNumber: session.currentQuestion,
+            audio: audioBase64,
+            audioMimeType: "audio/wav" 
+        });
 
 
     } catch (err) {
