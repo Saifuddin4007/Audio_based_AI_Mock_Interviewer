@@ -5,6 +5,7 @@ import Session from '../models/Session.js';
 import { clearHistory, getHistory, saveTurn } from '../services/memoryService.js';
 import { evaluateSession } from '../services/evaluationService.js';
 import { generateNextQuestion } from '../services/interviewService.js';
+import { generateSpeech } from '../services/speechService.js';
 
 // src/controllers/speechController.js
 export const uploadAudio = async (req, res) => {
@@ -27,6 +28,11 @@ export const uploadAudio = async (req, res) => {
     console.log(`Node.js received file: ${filePath}`);
 
     const { sessionId } = req.body;
+    if(!sessionId || !mongoose.isValidObjectId(sessionId)) {
+      deleteTempFile(filePath);
+      return res.status(400).json({ message: "Invalid session ID" });
+    }
+
     const session = await Session.findById(sessionId);
 
     //!Authorize session
@@ -54,9 +60,15 @@ export const uploadAudio = async (req, res) => {
     });
 
     // 3. Extract the transcribed text from Python's response
-    const transcribedText = pythonResponse.data.text;
+    let transcribedText = pythonResponse.data.text;
     console.log(`Transcription successful: "${transcribedText}"`);
 
+    if(typeof transcribedText !== "string" || !transcribedText.trim()) {
+      deleteTempFile(filePath);
+      return res.status(400).json({ message: "No speech detected. Please record your answer again." });
+    }
+
+    transcribedText= transcribedText.trim();
 
     //!Modify or insert the transcribedText into the questions.answers array
     if (session.questions.length > 0) {
@@ -96,7 +108,18 @@ export const uploadAudio = async (req, res) => {
 
     await saveTurn(sessionId, transcribedText, response.content);
 
-    return res.status(200).json({ question: response.content, questionNumber: session.currentQuestion });
+    const questionSpeech= await generateSpeech(response.content);
+    if(!Buffer.isBuffer(questionSpeech) || questionSpeech.length === 0) {
+      return res.status(500).json({ message: "Failed to generate speech for the question." });
+    }
+    const audioBase64= questionSpeech.toString("base64");
+
+    return res.status(200).json({ 
+      question: response.content, 
+      questionNumber: session.currentQuestion, 
+      audio: audioBase64,
+      audioMimeType: "audio/wav" 
+    });
 
 
   } catch (error) {
