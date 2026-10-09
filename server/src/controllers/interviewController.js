@@ -3,6 +3,7 @@ import Session from '../models/Session.js';
 import { evaluateSession } from '../services/evaluationService.js';
 import { generateNextQuestion } from '../services/interviewService.js';
 import { clearHistory, getHistory, saveTurn } from '../services/memoryService.js';
+import { generateSpeech } from '../services/speechService.js';
 
 
 
