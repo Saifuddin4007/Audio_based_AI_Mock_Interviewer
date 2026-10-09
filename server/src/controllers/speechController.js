@@ -6,6 +6,7 @@ import { clearHistory, getHistory, saveTurn } from '../services/memoryService.js
 import { evaluateSession } from '../services/evaluationService.js';
 import { generateNextQuestion } from '../services/interviewService.js';
 import { generateSpeech } from '../services/speechService.js';
+import mongoose from 'mongoose';
 
 // src/controllers/speechController.js
 export const uploadAudio = async (req, res) => {
@@ -51,12 +52,23 @@ export const uploadAudio = async (req, res) => {
     }
 
 
+    const lastQuestion = session.questions[session.questions.length - 1];
+
+    if(!lastQuestion){
+      deleteTempFile(filePath);
+      return res.status(400).json({ message: "No interview question found for this answer" });
+    }
+
 
     // 2. Send the file path to the Python Whisper service
     console.log("Sending to Python for transcription...");
 
     const pythonResponse = await axios.post('http://localhost:8000/transcribe', {
-      file_path: filePath
+      file_path: filePath,
+      interview_type: session.interviewType,
+      role: session.role,
+      focus_skills: session.focusSkills,
+      question: lastQuestion.questionText
     });
 
     // 3. Extract the transcribed text from Python's response
