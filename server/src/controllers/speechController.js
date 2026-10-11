@@ -7,9 +7,13 @@ import { evaluateSession } from '../services/evaluationService.js';
 import { generateNextQuestion } from '../services/interviewService.js';
 import { generateSpeech } from '../services/speechService.js';
 import mongoose from 'mongoose';
+import { uploadAnswerAudio, deleteAnswerAudio } from '../services/cloudinaryService.js';
 
 // src/controllers/speechController.js
 export const uploadAudio = async (req, res) => {
+  let cloudinaryPublicId = null;
+  let answerSaved= false;
+
   try {
 
     const deleteTempFile = (filePath) => {
@@ -29,7 +33,7 @@ export const uploadAudio = async (req, res) => {
     console.log(`Node.js received file: ${filePath}`);
 
     const { sessionId } = req.body;
-    if(!sessionId || !mongoose.isValidObjectId(sessionId)) {
+    if (!sessionId || !mongoose.isValidObjectId(sessionId)) {
       deleteTempFile(filePath);
       return res.status(400).json({ message: "Invalid session ID" });
     }
@@ -54,11 +58,18 @@ export const uploadAudio = async (req, res) => {
 
     const lastQuestion = session.questions[session.questions.length - 1];
 
-    if(!lastQuestion){
+    if (!lastQuestion) {
       deleteTempFile(filePath);
       return res.status(400).json({ message: "No interview question found for this answer" });
     }
 
+    //Cloudinary upload
+    const cloudinaryAudio = await uploadAnswerAudio(
+      filePath,
+      sessionId
+    );
+
+    cloudinaryPublicId = cloudinaryAudio.public_id;
 
     // 2. Send the file path to the Python Whisper service
     console.log("Sending to Python for transcription...");
@@ -75,12 +86,22 @@ export const uploadAudio = async (req, res) => {
     let transcribedText = pythonResponse.data.text;
     console.log(`Transcription successful: "${transcribedText}"`);
 
-    if(typeof transcribedText !== "string" || !transcribedText.trim()) {
+    if (typeof transcribedText !== "string" || !transcribedText.trim()) {
       deleteTempFile(filePath);
+
+      if (cloudinaryPublicId) {
+        try{
+          await deleteAnswerAudio(cloudinaryPublicId);
+        cloudinaryPublicId = null;
+        }catch(cleanupError){
+          console.error("Failed to cleanup empty-answer audio", cleanupError.message);
+        }
+      }
+
       return res.status(400).json({ message: "No speech detected. Please record your answer again." });
     }
 
-    transcribedText= transcribedText.trim();
+    transcribedText = transcribedText.trim();
 
     //!Modify or insert the transcribedText into the questions.answers array
     if (session.questions.length > 0) {
@@ -88,7 +109,8 @@ export const uploadAudio = async (req, res) => {
       lastQuestion.answer = {
         transcript: transcribedText,
         answeredAt: new Date(),
-        audioURL: null
+        audioURL: cloudinaryAudio.secure_url,
+        audioPublicId: cloudinaryPublicId
       }
     }
 
@@ -97,14 +119,51 @@ export const uploadAudio = async (req, res) => {
     session.currentQuestion++;
     await session.save();
 
+    answerSaved = true;
+
     // 4. Delete the .webm file from disk to save space (since we have the text now)
-    fs.unlinkSync(filePath);
+    deleteTempFile(filePath);
     console.log("Temporary audio file deleted.");
 
     if (session.currentQuestion > session.totalQuestions) {
       const result = await evaluateSession(session);
       session.status = "completed";
       session.completedAt = new Date();
+      await session.save();
+
+      //Delete all audio recordings associated with this session
+      const audioPublicIds = session.questions.map(question => question.answer?.audioPublicId).filter(Boolean);
+
+      const deletionResults = await Promise.allSettled(
+        audioPublicIds.map(deleteAnswerAudio)
+      );
+
+      const failedDeletions = deletionResults.filter(
+        item => item.status === "rejected"
+      );
+
+      if (failedDeletions.length > 0) {
+        console.error(
+          "Failed to delete some cloudinary audio files:", failedDeletions.map(item => item.reason?.message)
+        );
+      }
+
+      //Delete publicId from question.answers.audioPublicId and audioURL from question.answers.audioURL in MongoDB's Session
+      for (let i = 0; i < deletionResults.length; i++) {
+        if (deletionResults[i].status === "fulfilled") {
+          const publicId = audioPublicIds[i];
+
+          const answer = session.questions.find(
+            question => question.answer?.audioPublicId === publicId
+          )?.answer;
+
+          if (answer) {
+            answer.audioURL = undefined;
+            answer.audioPublicId = undefined;
+          }
+        }
+      }
+
       await session.save();
 
       await clearHistory(sessionId);
@@ -120,21 +179,28 @@ export const uploadAudio = async (req, res) => {
 
     await saveTurn(sessionId, transcribedText, response.content);
 
-    const questionSpeech= await generateSpeech(response.content);
-    if(!Buffer.isBuffer(questionSpeech) || questionSpeech.length === 0) {
+    const questionSpeech = await generateSpeech(response.content);
+    if (!Buffer.isBuffer(questionSpeech) || questionSpeech.length === 0) {
       return res.status(500).json({ message: "Failed to generate speech for the question." });
     }
-    const audioBase64= questionSpeech.toString("base64");
+    const audioBase64 = questionSpeech.toString("base64");
 
-    return res.status(200).json({ 
-      question: response.content, 
-      questionNumber: session.currentQuestion, 
+    return res.status(200).json({
+      question: response.content,
+      questionNumber: session.currentQuestion,
       audio: audioBase64,
-      audioMimeType: "audio/wav" 
+      audioMimeType: "audio/wav"
     });
 
 
   } catch (error) {
+    if (cloudinaryPublicId && !answerSaved) {
+      try {
+        await deleteAnswerAudio(cloudinaryPublicId);
+      } catch (cleanupError) {
+        console.error("Failed to delete cloudinary audio file:", cleanupError.message);
+      }
+    }
     console.error("Transcription pipeline error:", error.message);
 
     // Clean up the file even if the Python server fails
