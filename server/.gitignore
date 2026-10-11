@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build output
+dist/
+build/
+
+# Coverage
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Ignore Python junk
+ai_services/venv/
+__pycache__/
+*.pyc
+
+# Ignore uploaded user audio (don't push user data to GitHub!)
+uploads/
+
+# Ignore large AI model files
+*.onnx
+*.onnx.json
