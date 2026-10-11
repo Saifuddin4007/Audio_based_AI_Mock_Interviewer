@@ -75,6 +75,7 @@ const sessionSchema= new mongoose.Schema({
             },
             answer: {
                 audioURL: String,
+                audioPublicId: String, // cloudinary public id
                 transcript: String,
                 answeredAt: {
                     type: Date
