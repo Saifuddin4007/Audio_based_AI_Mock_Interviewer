@@ -4,15 +4,12 @@ import api from './api';
 import axios from 'axios';
 
 
-interface StartInterview {
+interface QuestionResponse {
     question: string;
     questionNumber: number;
+    audio: string;
+    audioMimeType: string;
     message?: string;
-}
-
-interface NextQuestionResponse {
-    question: string;
-    questionNumber: number;
 }
 
 interface FinalResultResponse {
@@ -20,7 +17,7 @@ interface FinalResultResponse {
     result: Result;
 }
 
-type SubmitAnswerAndNext = NextQuestionResponse | FinalResultResponse;
+type SubmitAnswerAndNext = QuestionResponse | FinalResultResponse;
 
 interface AbandonInterview {
     message: string;
@@ -30,9 +27,9 @@ interface AbandonInterview {
 
 
 
-export async function startInterview(sessionId: string): Promise<StartInterview> {
+export async function startInterview(sessionId: string): Promise<QuestionResponse> {
     try {
-        const response = await api.post<StartInterview>('/api/v1/interview/start', { sessionId });
+        const response = await api.post<QuestionResponse>('/api/v1/interview/start', { sessionId });
         return response.data;
     } catch (err: unknown) {
         if (axios.isAxiosError<ApiError>(err)) {
