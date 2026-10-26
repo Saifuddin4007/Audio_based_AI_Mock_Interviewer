@@ -4,13 +4,15 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 type RecorderStatus = 'idle' | 'recording' | 'paused' | 'playback' | 'error';
 
 interface AIInterviewRecorderProps {
+  onRecordingStart?: () => void;
+  onRecordingStateChange?: (isRecording: boolean) => void;
   onRecordingComplete?: (blob: Blob, fileName: string) => void;
+  onRecordingDiscard?: () => void;
 }
 
-const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingComplete }) => {
-  // ==========================================
+const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingStart, onRecordingStateChange, onRecordingComplete, onRecordingDiscard }) => {
+
   // 1. STATE MANAGEMENT (Triggers UI re-renders)
-  // ==========================================
 
   // Tracks the current phase of the recorder to know which UI to show
   const [status, setStatus] = useState<RecorderStatus>('idle');
@@ -28,9 +30,7 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
   const [errorMsg, setErrorMsg] = useState<string>('');
 
 
-  // ==========================================
   // 2. REFS (Hold mutable values WITHOUT triggering re-renders)
-  // ==========================================
 
   // Holds the actual MediaRecorder instance so we can call .start(), .stop(), .pause() on it
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -42,15 +42,13 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
   const streamRef = useRef<MediaStream | null>(null);
 
   // Holds the setInterval ID so we can clear the timer when recording stops/pauses
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<number | null>(null);
 
   // Holds a reference to the HTML <audio> element so we can force it to reload the new audio URL
   const audioRef = useRef<HTMLAudioElement>(null);
 
 
-  // ==========================================
   // 3. HELPER FUNCTIONS
-  // ==========================================
 
   /**
    * Detects the best audio format the browser supports.
@@ -77,9 +75,7 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
 
-  // ==========================================
   // 4. ACTION FUNCTIONS (The Core Logic)
-  // ==========================================
 
   /**
    * START RECORDING
@@ -108,13 +104,16 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
 
       // 2. Verify the stream actually has audio (prevents silent recording bugs)
       if (stream.getAudioTracks().length === 0) {
+        stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
         throw new Error('No audio tracks found');
       }
 
       // 3. Initialize MediaRecorder with the best supported format
       const mimeType = getSupportedMimeType();
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
+
+      const actualMimeType = mediaRecorder.mimeType;
 
       // 4. EVENT: Fired every 1 second (due to timeslice below) with a new piece of audio data
       mediaRecorder.ondataavailable = (event) => {
@@ -126,8 +125,9 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
 
       // 5. EVENT: Fired when .stop() is called. This is where we finalize the recording.
       mediaRecorder.onstop = () => {
+        onRecordingStateChange?.(false); // Notify parent component that recording has stopped
         // Combine all the 1-second chunks into one single, complete audio file (Blob)
-        const finalBlob = new Blob(chunksRef.current, { type: mimeType });
+        const finalBlob = new Blob(chunksRef.current, { type: actualMimeType });
 
         if (finalBlob.size === 0) {
           // If the blob is empty, the mic was likely blocked or muted
@@ -161,12 +161,27 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
 
         // CLEANUP: Turn off the microphone hardware light and free up resources
         stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-        if (timerRef.current !== null) clearInterval(timerRef.current); // Stop the timer
+        if (timerRef.current !== null){
+           window.clearInterval(timerRef.current); // Stop the timer
+           timerRef.current = null;
+        }
       };
 
       // 6. EVENT: Fired if a fatal error occurs during recording (e.g., disk full, hardware disconnect)
       mediaRecorder.onerror = (event) => {
         console.error('Recorder error:', event.error);
+
+        if(timerRef.current !== null){
+          window.clearInterval(timerRef.current);
+          timerRef.current= null;
+        }
+
+        if(streamRef.current){
+          streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+          streamRef.current= null;
+        }
+
+        onRecordingStateChange?.(false);
         setErrorMsg(`Error: ${event.error.name}`);
         setStatus('error');
       };
@@ -179,16 +194,20 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
       setStatus('recording');
       setDuration(0);
 
+      onRecordingStart?.();
+      onRecordingStateChange?.(true); // Notify parent component that recording has started
+
       // Start the visual timer
-      timerRef.current = setInterval(() => setDuration(prev => prev + 1), 1000);
+      timerRef.current = window.setInterval(() => setDuration(prev => prev + 1), 1000);
 
     } catch (error: unknown) {
       // Catch permission denials or missing hardware
       const message = error instanceof Error ? error.message : 'Unknown error';
       setErrorMsg(`Mic access denied: ${message}`);
       setStatus('error');
+      onRecordingStateChange?.(false);
     }
-  }, []); // Empty dependency array means this function is created only once
+  }, [onRecordingStart, onRecordingComplete, onRecordingStateChange]); // Empty dependency array means this function is created only once
 
   /**
    * STOP RECORDING
@@ -211,12 +230,15 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
     if (status === 'recording') {
       mediaRecorderRef.current.pause();
       setStatus('paused');
-      if (timerRef.current !== null) clearInterval(timerRef.current); // Pause the timer
+      if (timerRef.current !== null) {
+        window.clearInterval(timerRef.current); // Pause the timer
+        timerRef.current = null;
+      }
     } else if (status === 'paused') {
       mediaRecorderRef.current.resume();
       setStatus('recording');
       // Restart the timer
-      timerRef.current = setInterval(() => setDuration(prev => prev + 1), 1000);
+      timerRef.current = window.setInterval(() => setDuration(prev => prev + 1), 1000);
     }
   }, [status]); // Re-create this function if 'status' changes
 
@@ -225,40 +247,49 @@ const AIInterviewRecorder: React.FC<AIInterviewRecorderProps> = ({ onRecordingCo
    * Deletes the current recording and resets the component to its initial state.
    */
   const clearRecording = useCallback(() => {
-    // CRITICAL: Free up browser memory by revoking the temporary Blob URL
-    if (audioURL) URL.revokeObjectURL(audioURL);
-
     setAudioURL(null);
     setFileName('');
     setDuration(0);
     setErrorMsg('');
     setStatus('idle');
-  }, [audioURL]);
+
+    onRecordingDiscard?.();
+  }, [onRecordingDiscard]);
 
 
-  // ==========================================
   // 5. LIFECYCLE CLEANUP (Prevents Memory Leaks)
-  // ==========================================
 
   /**
    * This useEffect runs when the component is REMOVED from the screen (unmounted).
    * It ensures we don't leave the microphone turned on or timers running in the background.
    */
+
+  useEffect(() => {
+    return ()=>{
+      if (audioURL) URL.revokeObjectURL(audioURL);
+    }
+  }, [audioURL]);
+
+
   useEffect(() => {
     // This is the "cleanup" function that runs on unmount
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        streamRef.current= null;
       }
-      if (timerRef.current !== null) clearInterval(timerRef.current);
-      if (audioURL) URL.revokeObjectURL(audioURL);
+      if (timerRef.current !== null) {
+        window.clearInterval(timerRef.current);
+        timerRef.current= null;
+      }
+      
+
+      onRecordingStateChange?.(false);
     };
-  }, [audioURL]); // Re-run cleanup if audioURL changes to prevent memory leaks
+  }, [onRecordingStateChange]); // Re-run cleanup if audioURL changes to prevent memory leaks
 
 
-  // ==========================================
   // 6. RENDER (UI)
-  // ==========================================
 
   return (
     <div className="flex flex-col items-start">
