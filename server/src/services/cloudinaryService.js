@@ -1,12 +1,30 @@
 import cloudinary from '../config/cloudinary.js';
 
-export const uploadAnswerAudio = async (filePath, sessionId) => {
-    return cloudinary.uploader.upload(filePath, {
-        resource_type: 'video',
-        folder: `mock-interviewer/${sessionId}/answers`,
-        type: 'authenticated'
+
+export const uploadAnswerAudio = (fileBuffer, sessionId) => {
+    return new Promise((resolve, reject) => {
+
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                resource_type: 'video',
+                folder: `mock-interviewer/${sessionId}/answers`,
+                type: 'authenticated'
+            },
+
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            }
+        );
+
+        stream.end(fileBuffer);
     });
 };
+
+
 
 export const deleteAnswerAudio = async (publicId) => {
     if (!publicId) return;
@@ -17,8 +35,13 @@ export const deleteAnswerAudio = async (publicId) => {
         invalidate: true
     });
 
-    if (result.result !== 'ok' && result.result !== 'not found') {
-        throw new Error(`Cloudinary deletion failed: ${result.result}`);
+    if (
+        result.result !== 'ok' &&
+        result.result !== 'not found'
+    ) {
+        throw new Error(
+            `Cloudinary deletion failed: ${result.result}`
+        );
     }
 
     return result;
