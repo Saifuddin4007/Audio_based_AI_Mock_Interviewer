@@ -15,9 +15,19 @@ const llm= new ChatGroq({
    apiKey: process.env.GROQ_API_KEY,
    model: MODEL_USED,
    temperature: 0.6,
-   maxRetries: 2,
-   // maxTokens: 200
+   // maxRetries: 2,
+   maxRetries: 0,
+   // maxTokens: 1000,
+   maxTokens: 600,
+
+});
+export const evaluationLLM= new ChatGroq({
+   apiKey: process.env.GROQ_API_KEY,
+   model: MODEL_USED,
+   temperature: 0.6,
+   maxRetries: 0,
    maxTokens: 1000
+  
 
 });
 
