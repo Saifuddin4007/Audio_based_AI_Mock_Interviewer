@@ -1,8 +1,8 @@
 import { evaluationTemplate } from "./prompt.js";
-import llm from '../config/groq.js';
+import {evaluationLLM} from '../config/groq.js';
 import { evaluationSchema } from "../schema/evaluationSchema.js";
 
-const structuredLLM= llm.withStructuredOutput(evaluationSchema);
+const structuredLLM= evaluationLLM.withStructuredOutput(evaluationSchema);
 
 const evaluationChain= evaluationTemplate.pipe(structuredLLM);
 
