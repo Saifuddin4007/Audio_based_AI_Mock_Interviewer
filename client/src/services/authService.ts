@@ -1,5 +1,6 @@
 import type { ApiError } from '../types/error';
 import api from './api';
+import refreshClient from './refreshClient';
 import axios from 'axios';
 
 
@@ -68,7 +69,7 @@ export async function login(email:string, password:string): Promise<Login>{
 
 export async function refresh(): Promise<Refresh>{
     try{
-        const response= await api.post<Refresh>('/api/v1/auth/refresh');
+        const response= await refreshClient.post<Refresh>('/api/v1/auth/refresh');
         return response.data;
     }catch(err:unknown){
       if (axios.isAxiosError<ApiError>(err)) {
