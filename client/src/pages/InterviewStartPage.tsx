@@ -5,13 +5,19 @@ import { getOneSession } from "../services/sessionService";
 import AIInterviewRecorder from "../components/AIInterviewRecorder";
 import { uploadAudio } from "../services/speechService";
 import DisplayError from "../components/DisplayError";
+import QuestionAudio from "../components/QuestionAudio";
 
+const AUDIO_INTERVIEW_TYPES = ["Technical", "HR", "Behavioral"] as const;
+const MAX_CODE_ANSWER_CHARS = 12000;
 
 const InterviewStartPage: React.FC = () => {
   const location = useLocation();
 
   const questionAsked = location.state?.question;
   const quesNum = location.state?.questionNumber;
+  const questionAudioAsked = location.state?.audio;
+  const questionAudioMimeTypeAsked = location.state?.audioMimeType;
+
 
   const [question, setQuestion] = useState<string>(questionAsked ?? "");
   const [candidateAnswer, setCandidateAnswer] = useState<string>("");
@@ -27,6 +33,13 @@ const InterviewStartPage: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [sessionError, setSessionError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [questionAudio, setQuestionAudio] = useState<string>(questionAudioAsked ?? "");
+  const [questionAudioMimeType, setQuestionAudioMimeType] = useState<string>(questionAudioMimeTypeAsked ?? "");
+  const [interviewType, setInterviewType] = useState<string>("");
+
+  const canUseAudio = AUDIO_INTERVIEW_TYPES.includes(
+    interviewType as (typeof AUDIO_INTERVIEW_TYPES)[number]
+  );
 
 
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -54,16 +67,18 @@ const InterviewStartPage: React.FC = () => {
       if ("question" in response) {
         setQuestion(response.question);
         setQuestionNumber(response.questionNumber);
+        setQuestionAudio(response.audio);
+        setQuestionAudioMimeType(response.audioMimeType);
         setCandidateAnswer("");
       } else {
         navigate(`/result/${sessionId}`, { replace: true });
       }
 
     } catch (err) {
-      // console.log("Error submitting answer");
-      console.error("Error submitting answer: ", err);
       if (err instanceof Error) {
         setError(err.message);
+      } else {
+        setError("Failed to submit answer.");
       }
     } finally {
       setIsSubmitting(false);
@@ -81,6 +96,12 @@ const InterviewStartPage: React.FC = () => {
   }
 
   const handleAudioAnswer = async () => {
+
+    if (!canUseAudio) {
+      setError("Audio answers aren't supported for this interview type");
+      return;
+    }
+
     if (!audioBlob || !audioFileName) {
       alert("Please record first.");
       return;
@@ -104,6 +125,9 @@ const InterviewStartPage: React.FC = () => {
         setQuestion(uploadResponse.question);
         setQuestionNumber(uploadResponse.questionNumber);
 
+        setQuestionAudio(uploadResponse.audio);
+        setQuestionAudioMimeType(uploadResponse.audioMimeType);
+
         setAudioBlob(null);
         setAudioFileName("");
         setRecorderKey((prevKey) => prevKey + 1);
@@ -116,7 +140,7 @@ const InterviewStartPage: React.FC = () => {
     } catch (err) {
       console.error("Error submitting answer: ", err);
       alert("Failed to submit answer.");
-      if (err instanceof Error){
+      if (err instanceof Error) {
         setError(err.message);
       }
     } finally {
@@ -127,7 +151,7 @@ const InterviewStartPage: React.FC = () => {
   const hasAudioAnswer = audioBlob !== null;
 
 
-  const handleRecordingDiscard= ()=>{
+  const handleRecordingDiscard = () => {
     setAudioBlob(null);
     setAudioFileName("");
   }
@@ -183,6 +207,7 @@ const InterviewStartPage: React.FC = () => {
 
       try {
         const res = await getOneSession(sessionId);
+        setInterviewType(res.session.interviewType);
 
         if (res.session.status === "completed") {
           navigate(`/result/${sessionId}`, { replace: true });
@@ -242,8 +267,26 @@ const InterviewStartPage: React.FC = () => {
         </div>
 
         {/* Question Display */}
-        <div className="bg-white shadow-md rounded-lg p-8">
+        {/* <div className="bg-white shadow-md rounded-lg p-8">
           <h3 className="text-lg font-semibold text-gray-700 mb-4">Question</h3>
+          <div className="border border-gray-300 rounded-lg p-6 text-center text-gray-600">
+            {question}
+          </div>
+        </div> */}
+
+        <div className="bg-white shadow-md rounded-lg p-8">
+
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-700">Question</h3>
+
+            <QuestionAudio
+              audio={questionAudio}
+              audioMimeType={questionAudioMimeType}
+              autoPlay={true}
+            />
+
+          </div>
+
           <div className="border border-gray-300 rounded-lg p-6 text-center text-gray-600">
             {question}
           </div>
@@ -259,6 +302,12 @@ const InterviewStartPage: React.FC = () => {
 
         {/* Answer Section */}
         <div className="bg-white shadow-md rounded-lg p-8 space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Type your Answer
           </label>
@@ -266,24 +315,47 @@ const InterviewStartPage: React.FC = () => {
             className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
             disabled={isRecording || hasAudioAnswer}
             value={candidateAnswer}
-            onChange={(e) => setCandidateAnswer(e.target.value)}
+            onChange={(e) => {
+              setCandidateAnswer(e.target.value);
+              setError(null);
+            }}
             placeholder={
               hasAudioAnswer ? "Audio mode selected. Discard the recording to type an answer." : "Type your answer here..."
             }
             rows={4}
           ></textarea>
+          {(interviewType === "Coding" || interviewType === "DSA") && (
+            <p className="text-sm text-gray-500 text-right">
+              {candidateAnswer.length} / {MAX_CODE_ANSWER_CHARS} characters
+            </p>
+          )}
 
           {/* Recorder + Submit */}
           <div className="flex items-center justify-between">
-            <div className="flex space-x-4">
-              <AIInterviewRecorder key={recorderKey} onRecordingStateChange={setIsRecording} onRecordingStart={handleRecordingStart} onRecordingComplete={handleRecordingComplete} onRecordingDiscard= {handleRecordingDiscard}/>
+            <div className="flex flex-col space-y-2">
+              {
+                canUseAudio ? (
+
+
+                  <AIInterviewRecorder key={recorderKey}
+                    onRecordingStateChange={setIsRecording}
+                    onRecordingStart={handleRecordingStart}
+                    onRecordingComplete={handleRecordingComplete}
+                    onRecordingDiscard={handleRecordingDiscard}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    Text answers only for {interviewType} interviews.
+                  </p>
+                )
+              }
             </div>
             <button
               className="py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
-              onClick={hasAudioAnswer ? handleAudioAnswer : handleSubmitAnswer}
+              onClick={canUseAudio && hasAudioAnswer ? handleAudioAnswer : handleSubmitAnswer}
               disabled={isSubmitting || isRecording}
             >
-              {hasAudioAnswer ? "Submit Audio" : "Submit Text"}
+              {canUseAudio && hasAudioAnswer ? "Submit Audio" : "Submit Text"}
             </button>
           </div>
         </div>
