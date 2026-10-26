@@ -1,6 +1,5 @@
-import fs from 'fs';
 import axios from 'axios';
-import path from 'path';
+import FormData from 'form-data';
 import Session from '../models/Session.js';
 import { clearHistory, getHistory, saveTurn } from '../services/memoryService.js';
 import { evaluateSession } from '../services/evaluationService.js';
@@ -9,32 +8,22 @@ import { generateSpeech } from '../services/speechService.js';
 import mongoose from 'mongoose';
 import { uploadAnswerAudio, deleteAnswerAudio } from '../services/cloudinaryService.js';
 
+
 // src/controllers/speechController.js
 export const uploadAudio = async (req, res) => {
   let cloudinaryPublicId = null;
-  let answerSaved= false;
+  let answerSaved = false;
 
   try {
 
-    const deleteTempFile = (filePath) => {
-      if (filePath && fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    };
-
-    // 1. Multer has already saved the file. If it failed, the error handler catches it.
+    // 1. Multer has already loaded the audio into memory.
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    console.log("File received and saved:", req.file.filename);
-
-    const filePath = path.resolve(req.file.path);
-    console.log(`Node.js received file: ${filePath}`);
 
     const { sessionId } = req.body;
     if (!sessionId || !mongoose.isValidObjectId(sessionId)) {
-      deleteTempFile(filePath);
       return res.status(400).json({ message: "Invalid session ID" });
     }
 
@@ -42,58 +31,94 @@ export const uploadAudio = async (req, res) => {
 
     //!Authorize session
     if (!session) {
-      deleteTempFile(filePath);
       return res.status(404).json({ message: "Session not found" });
     }
     if (session.user.toString() !== req.userId) {
-      deleteTempFile(filePath);
+  
       return res.status(403).json({ message: "Unauthorized" });
     }
 
     if (session.status !== "in_progress") {
-      deleteTempFile(filePath);
       return res.status(400).json({ message: "Interview is not active" });
+    }
+
+    const audioInterviewTypes= [
+      "Technical",
+      "HR",
+      "Behavioral"
+    ];
+
+    if(!audioInterviewTypes.includes(session.interviewType)){
+      return res.status(400).json({
+        message: `audio answers are not supported for ${session.interviewType} interviews.`
+      });
     }
 
 
     const lastQuestion = session.questions[session.questions.length - 1];
 
     if (!lastQuestion) {
-      deleteTempFile(filePath);
       return res.status(400).json({ message: "No interview question found for this answer" });
     }
 
     //Cloudinary upload
     const cloudinaryAudio = await uploadAnswerAudio(
-      filePath,
+      req.file.buffer,
       sessionId
     );
 
     cloudinaryPublicId = cloudinaryAudio.public_id;
 
-    // 2. Send the file path to the Python Whisper service
+    // 2. Send the audio buffer to the Python Whisper service
     console.log("Sending to Python for transcription...");
 
-    const pythonResponse = await axios.post('http://localhost:8000/transcribe', {
-      file_path: filePath,
-      interview_type: session.interviewType,
-      role: session.role,
-      focus_skills: session.focusSkills,
-      question: lastQuestion.questionText
+    const form = new FormData();
+
+    form.append('audio', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype
     });
+
+    form.append(
+      'interview_type',
+      session.interviewType
+    );
+
+    form.append(
+      'role',
+      session.role
+    );
+
+    form.append(
+      'focus_skills',
+      JSON.stringify(session.focusSkills ?? [])
+    );
+
+    form.append(
+      'question',
+      lastQuestion.questionText
+    );
+
+    const pythonResponse = await axios.post(
+      `${process.env.AI_SERVICE_URL}/transcribe`,
+      form,
+      {
+        headers: form.getHeaders(),
+        maxBodyLength: Infinity
+      }
+    );
 
     // 3. Extract the transcribed text from Python's response
     let transcribedText = pythonResponse.data.text;
     console.log(`Transcription successful: "${transcribedText}"`);
 
     if (typeof transcribedText !== "string" || !transcribedText.trim()) {
-      deleteTempFile(filePath);
 
       if (cloudinaryPublicId) {
-        try{
+        try {
           await deleteAnswerAudio(cloudinaryPublicId);
-        cloudinaryPublicId = null;
-        }catch(cleanupError){
+          cloudinaryPublicId = null;
+        } catch (cleanupError) {
           console.error("Failed to cleanup empty-answer audio", cleanupError.message);
         }
       }
@@ -121,9 +146,6 @@ export const uploadAudio = async (req, res) => {
 
     answerSaved = true;
 
-    // 4. Delete the .webm file from disk to save space (since we have the text now)
-    deleteTempFile(filePath);
-    console.log("Temporary audio file deleted.");
 
     if (session.currentQuestion > session.totalQuestions) {
       const result = await evaluateSession(session);
@@ -202,11 +224,6 @@ export const uploadAudio = async (req, res) => {
       }
     }
     console.error("Transcription pipeline error:", error.message);
-
-    // Clean up the file even if the Python server fails
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
 
     // Check if Python server is down
     if (error.code === 'ECONNREFUSED') {
