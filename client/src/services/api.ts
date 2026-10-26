@@ -1,7 +1,10 @@
-import axios from 'axios';
-import { refresh } from './authService';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
+// import { refresh } from './authService';
+import { refreshAccessToken } from './refreshAccessToken';
 
-
+type RetryableRequestConfig= InternalAxiosRequestConfig & {
+    _retry?: boolean;
+};
 // This is the Axios instance used for your API requests.
 //
 // withCredentials: true is IMPORTANT because your refresh token
@@ -25,9 +28,7 @@ export default api;
 
 
 
-// ------------------------------------------------------------
 // ACCESS TOKEN STORAGE
-// ------------------------------------------------------------
 //
 // We intentionally keep the access token only in memory.
 //
@@ -47,40 +48,27 @@ export default api;
 // Axios interceptors can read this variable before making requests.
 
 let accessToken: string | null= null;
+let refreshPromise: Promise<string> | null = null;
+let authGeneration= 0;
+
+export const clearApiAccessToken = () =>{
+    authGeneration++;
+    accessToken= null;
+}
 
 
-
-// AuthContext calls this function after login.
-//
-// Example:
-//
-//     login response
-//          ↓
-//     accessToken received
-//          ↓
-//     setApiAccessToken(accessToken)
-//          ↓
-//     api.ts remembers the token
-//
-// We need this because the Axios interceptor lives in api.ts,
-// not inside AuthContext.
-//
-// AuthContext knows about React state.
-// api.ts knows about HTTP requests.
-//
-// This function connects those two worlds.
 
 export const setApiAccessToken= (token: string | null)=> {
     accessToken= token;
 }
 
 
+export const startNewAuthSession = ( token: string) =>{
+    authGeneration++;
+    accessToken= token;
+}
 
-
-
-// ------------------------------------------------------------
 // REQUEST INTERCEPTOR
-// ------------------------------------------------------------
 //
 // This runs BEFORE every request made through `api`.
 //
@@ -117,11 +105,7 @@ api.interceptors.request.use(
 
 
 
-
-
-// ------------------------------------------------------------
 // RESPONSE INTERCEPTOR
-// ------------------------------------------------------------
 //
 // This runs when the backend responds to a request.
 //
@@ -169,15 +153,13 @@ api.interceptors.response.use(
         //     method: "get",
         //     headers: {...}
         // }
-        const originalRequest= error.config;
+        const originalRequest= error.config as RetryableRequestConfig | undefined;
 
         if(!originalRequest){
             return Promise.reject(error);
         }
 
-         // --------------------------------------------------------
         // AUTH ENDPOINT CHECK
-        // --------------------------------------------------------
         //
         // We DON'T want the automatic refresh mechanism to react
         // to authentication endpoints themselves.
@@ -206,9 +188,7 @@ api.interceptors.response.use(
             originalRequest.url?.includes('/auth/logout');
 
         
-        // --------------------------------------------------------
         // SHOULD WE ATTEMPT REFRESH?
-        // --------------------------------------------------------
         //
         // All of these conditions must be true:
         //
@@ -229,7 +209,7 @@ api.interceptors.response.use(
             !originalRequest._retry &&
             !isAuthEndpoint
         ){
-             // Mark this request as already retried.
+            // Mark this request as already retried.
             //
             // Without this, imagine the new access token also fails:
             //
@@ -252,9 +232,7 @@ api.interceptors.response.use(
             originalRequest._retry= true; // Prevent infinite loop
             
             try{
-                // ------------------------------------------------
                 // GET A NEW ACCESS TOKEN
-                // ------------------------------------------------
                 //
                 // We do NOT send the refresh token manually.
                 //
@@ -267,60 +245,29 @@ api.interceptors.response.use(
                 //
                 // receives it.
 
-                // Attempt to refresh the access token
-                const res= await refresh();
-                const newAccessToken= res.accessToken;
+                //* Attempt to refresh the access token
+                
+                if(!refreshPromise){
+                    const generationAtStart= authGeneration;
+                    refreshPromise= refreshAccessToken()
+                    .then((newAccessToken)=> {
+                        if(generationAtStart !== authGeneration){
+                            throw new Error("Authentication state changed during token refresh");
+                        }
 
-                // Save the new access token in the module-level
-                // variable.
-                //
-                // From this point onward, future Axios requests
-                // will use the new token.
-                setApiAccessToken(newAccessToken);
+                        setApiAccessToken(newAccessToken);
 
+                        return newAccessToken;
+                    })
+                    .finally(()=> {
+                        refreshPromise= null;
+                    });
+                }
 
-                // ------------------------------------------------
-                // UPDATE THE FAILED REQUEST
-                // ------------------------------------------------
-                //
-                // The failed request still contains the OLD token.
-                //
-                // Example:
-                //
-                //     Authorization: Bearer OLD_TOKEN
-                //
-                // We replace it with:
-                //
-                //     Authorization: Bearer NEW_TOKEN
-                //
-                // Otherwise retrying the request would simply send
-                // the expired token again.
+                const newAccessToken= await refreshPromise;
 
-                // Update the original request's Authorization header
+                originalRequest.headers= originalRequest.headers ?? {};
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-
-                // ------------------------------------------------
-                // RETRY THE ORIGINAL REQUEST
-                // ------------------------------------------------
-                //
-                // Now we send the original request again.
-                //
-                // Example:
-                //
-                //     GET /api/v1/auth/me
-                //          ↓
-                //     OLD token → 401
-                //          ↓
-                //     refresh()
-                //          ↓
-                //     NEW token
-                //          ↓
-                //     GET /api/v1/auth/me
-                //          ↓
-                //     NEW token → 200
-
-                // Retry the original request with the new token
                 return api(originalRequest);
             }catch(err){
                 // Refresh itself failed.
@@ -339,7 +286,7 @@ api.interceptors.response.use(
             }
         }
 
-         // If this wasn't a refreshable 401,
+        // If this wasn't a refreshable 401,
         // just pass the error back to the caller.
         //
         // For example:
@@ -349,7 +296,7 @@ api.interceptors.response.use(
         // 404 → not found
         // 500 → server error
 
-         // Handle other errors
+        // Handle other errors
         return Promise.reject(error);
     }
 );
