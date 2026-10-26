@@ -3,16 +3,15 @@ import Result from "../models/Result.js";
 import { MODEL_USED } from "../config/groq.js";
 
 
-export const evaluateSession= async (session)=>{
-    try{
+export const evaluateSession = async (session) => {
+    try {
 
-        const transcript= session.questions.map((item)=>`
+        const transcript = session.questions.map((item) => `
             Question: ${item.questionText}
             Answer: ${item.answer?.transcript || "No Answer"}
         `).join("\n");
 
-
-        const response= await evaluationChain.invoke({
+        const response = await evaluationChain.invoke({
             role: session.role,
             interviewType: session.interviewType,
             difficulty: session.difficulty,
@@ -22,7 +21,7 @@ export const evaluateSession= async (session)=>{
         });
 
 
-        const result= await Result.create({
+        const result = await Result.create({
             session: session._id,
             overallScore: response.overallScore,
             domainScore: response.domainScore,
@@ -32,14 +31,14 @@ export const evaluateSession= async (session)=>{
             weaknesses: response.weaknesses,
             recommendations: response.recommendations,
             modelUsed: MODEL_USED,
-            isPartialEvaluation: session.status==="abandoned",
+            isPartialEvaluation: session.status === "abandoned",
         });
 
         await result.populate("session");
 
         return result;
 
-    }catch(err){
+    } catch (err) {
         throw new Error(err.message);
     }
 }
