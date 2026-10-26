@@ -45,3 +45,32 @@ export const saveTurn = async (sessionId, humanContent, aiContent) => {
 export async function clearHistory(sessionId) {
   await redisClient.del(`interview:${sessionId}`);
 }
+
+export const getRecentHistory= async (sessionId, messageLimit=4) =>{
+    try{
+        const raw= await redisClient.get(`interview:${sessionId}`);
+
+        const plainHistory= raw ? JSON.parse(raw) : [];
+
+        const recentHistory= plainHistory.slice(-messageLimit);
+
+        return recentHistory.map((msg)=> msg.role === "human" ? new HumanMessage(msg.content) : new AIMessage(msg.content));
+
+    }catch(err){
+        throw new Error(err.message);
+    }
+
+}
+
+
+export const getQuestionHistory = async (sessionId) =>{
+    try{
+        const raw= await redisClient.get(`interview:${sessionId}`);
+
+        const plainHistory= raw ? JSON.parse(raw) : [];
+
+        return plainHistory.filter((msg)=> msg.role === "ai").map((msg)=> msg.content);
+    }catch(err){
+        throw new Error(err.message);
+    }
+}
