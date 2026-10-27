@@ -104,7 +104,8 @@ export const uploadAudio = async (req, res) => {
       form,
       {
         headers: form.getHeaders(),
-        maxBodyLength: Infinity
+        maxBodyLength: Infinity,
+        timeout: 120000
       }
     );
 
