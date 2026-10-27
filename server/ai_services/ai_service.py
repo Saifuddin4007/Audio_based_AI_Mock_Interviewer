@@ -191,6 +191,10 @@ def decode_audio_bytes(audio_bytes: bytes) -> np.ndarray:
     finally:
         container.close()
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 
 @app.post("/transcribe")
