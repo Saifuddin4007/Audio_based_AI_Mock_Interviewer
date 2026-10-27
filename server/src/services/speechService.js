@@ -5,10 +5,15 @@ export const generateSpeech = async (questionText) => {
     if (!questionText) {
         throw new Error("No question text provided");
     }
+
+    console.log(
+        "Calling AI service:",
+        `${process.env.AI_SERVICE_URL}/speak`
+    );
     try {
-        const response = await axios.post(`${process.env.AI_SERVICE_URL}/speak`, 
+        const response = await axios.post(`${process.env.AI_SERVICE_URL}/speak`,
             {
-            text: questionText,
+                text: questionText,
             },
 
             {
@@ -21,12 +26,12 @@ export const generateSpeech = async (questionText) => {
         return Buffer.from(speech);
     } catch (err) {
         console.error("TTS service error:", err.message);
-        throw new Error("Error generating speech: " + 
+        throw new Error("Error generating speech: " +
 
-            (err.response?.status 
+            (err.response?.status
                 ? `FastAPI returned status ${err.response.status}`
                 : err.message)
         );
-    
+
     }
 }
