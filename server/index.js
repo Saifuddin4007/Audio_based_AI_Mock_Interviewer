@@ -16,7 +16,7 @@ dotenv.config();
 const app= express();
 
 app.use(cors({
-    origin: 'http://localhost:5173', 
+    origin: 'audio-based-ai-mock-interviewer.vercel.app', 
     credentials: true // Required if you are sending cookies/auth headers
 }));
 
