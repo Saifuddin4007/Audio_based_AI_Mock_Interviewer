@@ -17,6 +17,8 @@ import av
 import numpy as np
 import json
 
+models_ready= False
+
 #  Initialize the FastAPI app
 app = FastAPI(title="Local AI Service (STT & TTS)")
 
@@ -52,7 +54,9 @@ if not os.path.isfile(model_path) or not os.path.isfile(config_path):
 tts_voice = PiperVoice.load(model_path, config_path=config_path)
 
 print("Piper TTS model loaded successfully!")
-    
+   
+models_ready= True
+print("AI models are ready") 
     
 class TTSRequest(BaseModel):
     text: str
@@ -190,10 +194,6 @@ def decode_audio_bytes(audio_bytes: bytes) -> np.ndarray:
 
     finally:
         container.close()
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
 
 
 
@@ -357,3 +357,13 @@ async def text_to_speech(request: TTSRequest):
             status_code=500,
             detail="Speech generation failed."
         )
+        
+        
+
+@app.get("/health")
+def health():
+    if not models_ready:
+        return {"status": "starting"}, 503
+    
+    return {"status": "ok"}, 200
+
