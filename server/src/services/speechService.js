@@ -6,7 +6,7 @@ export const generateSpeech = async (questionText) => {
         throw new Error("No question text provided");
     }
     try {
-        const response = await axios.post('http://localhost:8000/speak', 
+        const response = await axios.post(`${process.env.AI_SERVICE_URL}/speak`, 
             {
             text: questionText,
             },
