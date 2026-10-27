@@ -18,7 +18,7 @@ export const generateSpeech = async (questionText) => {
 
             {
                 responseType: 'arraybuffer',
-                timeout: 60000
+                timeout: 120000
             }
         )
 
