@@ -310,7 +310,7 @@ async def transcribe_audio(
 
 @app.post("/speak")
 async def text_to_speech(request: TTSRequest):
-
+    print("/speak endpoint reached")
     if not request.text.strip():
         raise HTTPException(
             status_code=400,
