@@ -1,18 +1,29 @@
-import { waitForAIService } from "../services/aiServiceHealth.js";
+import axios from "axios";
 
 export const checkAIReadiness = async (req, res) => {
     try {
-        await waitForAIService();
+        const response = await axios.get(
+            `${process.env.AI_SERVICE_URL}/health`,
+            {
+                timeout: 5000
+            }
+        );
 
-        return res.status(200).json({
-            ready: true
-        });
-    } catch (error) {
-        console.error("AI readiness check failed:", error.message);
+        if (
+            response.status === 200 &&
+            response.data?.status === "ok"
+        ) {
+            return res.status(200).json({
+                ready: true
+            });
+        }
 
         return res.status(503).json({
-            ready: false,
-            message: "AI service is not ready"
+            ready: false
+        });
+    } catch (error) {
+        return res.status(503).json({
+            ready: false
         });
     }
 };
