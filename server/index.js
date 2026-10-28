@@ -7,6 +7,7 @@ import interviewRoutes from './src/routes/interviewRoutes.js';
 import resultRoutes from './src/routes/resultRoutes.js';
 import exportRoutes from './src/routes/exportRoutes.js';
 import speechRoutes from './src/routes/speechRoutes.js';
+import aiRoutes from './src/routes/aiRoutes.js';
 import { errorHandler } from './src/middlewares/multerErrorHandler.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -23,6 +24,7 @@ app.use(cors({
 //middlewares
 app.use(express.json());
 app.use(cookieParser());   // must come before any route using req.cookies
+app.use('/api/v1/ai', aiRoutes);
 
 
 //Routes
