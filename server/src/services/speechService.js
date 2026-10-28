@@ -1,10 +1,13 @@
 import axios from "axios";
+import { waitForAIService } from "./aiServiceHealth.js";
 
 
 export const generateSpeech = async (questionText) => {
     if (!questionText) {
         throw new Error("No question text provided");
     }
+
+    await waitForAIService();
 
     console.log(
         "Calling AI service:",
