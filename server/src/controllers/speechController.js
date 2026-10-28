@@ -7,6 +7,7 @@ import { generateNextQuestion } from '../services/interviewService.js';
 import { generateSpeech } from '../services/speechService.js';
 import mongoose from 'mongoose';
 import { uploadAnswerAudio, deleteAnswerAudio } from '../services/cloudinaryService.js';
+import { waitForAIService } from '../services/aiServiceHealth.js';
 
 
 // src/controllers/speechController.js
@@ -99,6 +100,7 @@ export const uploadAudio = async (req, res) => {
       lastQuestion.questionText
     );
 
+    await waitForAIService();
     const pythonResponse = await axios.post(
       `${process.env.AI_SERVICE_URL}/transcribe`,
       form,
