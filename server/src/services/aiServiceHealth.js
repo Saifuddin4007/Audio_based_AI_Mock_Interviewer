@@ -21,6 +21,7 @@ export const waitForAIService = async ({
                 timeout: 10000
             });
 
+            console.log("AI health response:", response.status, response.data);
             if (response.status === 200 && response.data?.status === "ok") {
                 console.log("AI service is ready");
                 return true;
