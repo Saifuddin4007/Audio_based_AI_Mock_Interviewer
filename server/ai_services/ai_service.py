@@ -16,6 +16,7 @@ import io
 import av
 import numpy as np
 import json
+from fastapi.responses import JSONResponse
 
 models_ready= False
 
@@ -363,7 +364,10 @@ async def text_to_speech(request: TTSRequest):
 @app.get("/health")
 def health():
     if not models_ready:
-        return {"status": "starting"}, 503
+        return JSONResponse(
+            status_code=503,
+            content={"status": "starting"}
+        )
     
-    return {"status": "ok"}, 200
+    return {"status": "ok"}
 
