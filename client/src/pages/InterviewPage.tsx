@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { startInterview } from "../services/interviewService";
 import { createSession } from "../services/sessionService";
 import type { Difficulty, InterviewType } from "../types/session";
+import { checkAIReadiness } from "../services/aiService";
 
 const InterviewPage: React.FC = () => {
   const [role, setRole] = useState<string>("");
@@ -11,14 +12,40 @@ const InterviewPage: React.FC = () => {
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [interviewType, setInterviewType] = useState<InterviewType | "">("");
   const [isStarting, setIsStarting] = useState<boolean>(false);
+  const [aiReady, setAiReady] = useState<boolean>(false);
+  const [checkingAI, setCheckingAI] = useState<boolean>(true);
 
   const navigate = useNavigate();
+
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+
+    const checkAI = async (): Promise<void> => {
+      const ready = await checkAIReadiness();
+
+      if (ready) {
+        setAiReady(true);
+        setCheckingAI(false);
+        clearInterval(intervalId);
+      }
+    };
+
+    checkAI();
+
+    intervalId = setInterval(checkAI, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
 
 
   // placeholder for your logic later
   const handleInterview = async (): Promise<void> => {
 
-    const cleanedSkills= focusSkills.split(",").map((skill) => skill.trim()).filter((skill)=> skill !== "");
+    const cleanedSkills = focusSkills.split(",").map((skill) => skill.trim()).filter((skill) => skill !== "");
 
     try {
 
@@ -36,7 +63,7 @@ const InterviewPage: React.FC = () => {
         alert("Please enter a role");
         return;
       }
-      if (experienceYears<0) {
+      if (experienceYears < 0) {
         alert("Please enter your experience years");
         return;
       }
@@ -66,7 +93,7 @@ const InterviewPage: React.FC = () => {
       }
     } catch {
       alert("Something went wrong, please try again later");
-    }finally{
+    } finally {
       setIsStarting(false);
     }
   };
@@ -85,11 +112,25 @@ const InterviewPage: React.FC = () => {
         <button
           className="mb-10 py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
           onClick={handleInterview}
-          disabled={isStarting}
+          disabled={isStarting || checkingAI || !aiReady}
         >
           Start Interview
         </button>
-        { [ "DSA", "Coding", "System-Design" ].includes(interviewType) ? <p className="w-full bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md shadow-sm">{`  📌 NOTE: You have chosen ${interviewType} Interview, so you have to use text-based interview format`}</p> : null}
+
+        {checkingAI && (
+          <p className="mb-6 text-gray-600">
+            Preparing AI interviewer... This may take a little longer the first time.
+          </p>
+        )}
+
+        {aiReady && !isStarting && (
+          <p className="mb-6 text-green-600 font-medium">
+            ✓ AI interviewer is ready
+          </p>
+        )}
+
+
+        {["DSA", "Coding", "System-Design"].includes(interviewType) ? <p className="w-full bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md shadow-sm">{`  📌 NOTE: You have chosen ${interviewType} Interview, so you have to use text-based interview format`}</p> : null}
         {/* Form Section */}
         <div className="w-full max-w-2xl bg-white shadow-md rounded-lg p-8 space-y-6">
           {/* Role */}
