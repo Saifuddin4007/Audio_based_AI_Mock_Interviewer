@@ -10,7 +10,7 @@ export const checkAIReadiness = async (req, res) => {
     try {
         const response = await axios.get( healthUrl,
             {
-                timeout: 5000
+                timeout: 30000
             }
         );
 
