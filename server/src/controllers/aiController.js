@@ -1,6 +1,10 @@
 import axios from "axios";
 
 export const checkAIReadiness = async (req, res) => {
+    console.log("=================================");
+    console.log("AI readiness request received");
+    console.log("AI health URL:", healthUrl);
+    console.log("Time:", new Date().toISOString());
     try {
         const response = await axios.get(
             `${process.env.AI_SERVICE_URL}/health`,
@@ -8,6 +12,10 @@ export const checkAIReadiness = async (req, res) => {
                 timeout: 5000
             }
         );
+
+        console.log("AI health request completed");
+        console.log("Status:", response.status);
+        console.log("Data:", response.data);
 
         if (
             response.status === 200 &&
@@ -17,11 +25,17 @@ export const checkAIReadiness = async (req, res) => {
                 ready: true
             });
         }
+        console.log("AI returned unexpected response");
 
         return res.status(503).json({
             ready: false
         });
     } catch (error) {
+        console.log("AI health request FAILED");
+        console.log("Error code:", error.code);
+        console.log("Error message:", error.message);
+        console.log("Error status:", error.response?.status);
+        console.log("Error data:", error.response?.data);
         return res.status(503).json({
             ready: false
         });
