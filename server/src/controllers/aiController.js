@@ -8,6 +8,7 @@ export const checkAIReadiness = async (req, res) => {
     console.log("AI health URL:", healthUrl);
     console.log("Time:", new Date().toISOString());
     try {
+        console.log("Node is calling fastAPI health endpoint now");
         const response = await axios.get( healthUrl,
             {
                 timeout: 30000
@@ -22,11 +23,12 @@ export const checkAIReadiness = async (req, res) => {
             response.status === 200 &&
             response.data?.status === "ok"
         ) {
+            console.log("AI ready");
             return res.status(200).json({
                 ready: true
             });
         }
-        console.log("AI returned unexpected response");
+        console.log("fastAPI respond but not ready");
 
         return res.status(503).json({
             ready: false
@@ -36,7 +38,7 @@ export const checkAIReadiness = async (req, res) => {
         console.log("Error code:", error.code);
         console.log("Error message:", error.message);
         console.log("Error status:", error.response?.status);
-        console.log("Error data:", error.response?.data);
+        console.log("Error data received:", !!error.response?.data);
         return res.status(503).json({
             ready: false
         });
