@@ -16,9 +16,11 @@ import io
 import av
 import numpy as np
 import json
+import time
 from fastapi.responses import JSONResponse
 
 models_ready= False
+startup_start = time.perf_counter()
 
 #  Initialize the FastAPI app
 app = FastAPI(title="Local AI Service (STT & TTS)")
@@ -34,14 +36,16 @@ app.add_middleware(
 # Load the Whisper model ONCE when the server starts
 # This prevents reloading the heavy model on every single request
 #  1. STT: Load Whisper Model (Runs once at startup)
-print("⏳ Loading Whisper model... (this may take a minute the first time)")
+print("⏳ Loading Whisper model...")
+whisper_start= time.perf_counter()
 stt_model = WhisperModel("base.en", device="cpu", compute_type="int8")
-print("✅ Model loaded successfully!")
+whisper_time= time.perf_counter() - whisper_start
+print(f" Whisper Model loaded in {whisper_time:.2f} seconds")
 
 
 
 # 2. TTS: Load Piper Voice Model (Runs once at startup)
-print("Loading Piper TTS model...")
+# print("Loading Piper TTS model...")
 
 model_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -51,12 +55,21 @@ config_path = model_path + ".json"
 
 if not os.path.isfile(model_path) or not os.path.isfile(config_path):
     raise RuntimeError("Piper model or config file is missing.")
+print("Loading Piper TTS model")
+piper_start= time.perf_counter()
 
 tts_voice = PiperVoice.load(model_path, config_path=config_path)
 
-print("Piper TTS model loaded successfully!")
+piper_time= time.perf_counter() - piper_start
+
+print(f"Piper TTS model loaded in {piper_time:.2f} seconds")
    
 models_ready= True
+
+print(
+    f"Total model startup time: "
+    f"{time.perf_counter() - startup_start:.2f} seconds"
+)
 print("AI models are ready") 
     
 class TTSRequest(BaseModel):
