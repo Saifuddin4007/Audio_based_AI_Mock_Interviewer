@@ -1,13 +1,14 @@
 import axios from "axios";
 
 export const checkAIReadiness = async (req, res) => {
+    const healthUrl= `${process.env.AI_SERVICE_URL}/health`;
+
     console.log("=================================");
     console.log("AI readiness request received");
     console.log("AI health URL:", healthUrl);
     console.log("Time:", new Date().toISOString());
     try {
-        const response = await axios.get(
-            `${process.env.AI_SERVICE_URL}/health`,
+        const response = await axios.get( healthUrl,
             {
                 timeout: 5000
             }
