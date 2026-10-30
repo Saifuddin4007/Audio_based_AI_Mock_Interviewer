@@ -11,7 +11,7 @@ export const checkAIReadiness = async (req, res) => {
         const startTime= Date.now();
         console.log("Node is calling fastAPI health endpoint now");
         await waitForAIService({
-            timeout: 120000,
+            timeout: 30000,
             retryDelay: 5000
         });
 
