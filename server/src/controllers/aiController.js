@@ -8,11 +8,17 @@ export const checkAIReadiness = async (req, res) => {
     console.log("AI health URL:", healthUrl);
     console.log("Time:", new Date().toISOString());
     try {
+        const startTime= Date.now();
         console.log("Node is calling fastAPI health endpoint now");
         const response = await axios.get( healthUrl,
             {
                 timeout: 30000
             }
+        );
+
+        console.log(
+            "AI Health Request completed in:", 
+            `${Date.now() - startTime} ms`
         );
 
         console.log("AI health request completed");
