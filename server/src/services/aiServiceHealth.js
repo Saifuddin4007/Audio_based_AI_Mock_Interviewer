@@ -18,7 +18,7 @@ export const waitForAIService = async ({
     while (Date.now() - startTime < timeout) {
         try {
             const response = await axios.get(healthUrl, {
-                timeout: 10000
+                timeout: 20000
             });
 
             console.log("AI health response:", response.status, response.data);
