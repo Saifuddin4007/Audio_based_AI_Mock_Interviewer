@@ -18,28 +18,30 @@ const InterviewPage: React.FC = () => {
   const navigate = useNavigate();
 
 
-  useEffect(() => {
-    let intervalId: ReturnType<typeof setInterval>;
+  useEffect(()=>{
+    let cancelled= false;
 
-    const checkAI = async (): Promise<void> => {
-      const ready = await checkAIReadiness();
+    const checkAI= async (): Promise<void> =>{
+      const ready= await checkAIReadiness();
 
-      if (ready) {
+      if(cancelled){
+        return;
+      }
+
+      if(ready){
         setAiReady(true);
         setCheckingAI(false);
-        clearInterval(intervalId);
+      }else{
+        setCheckingAI(false);
       }
-    };
+    }
 
     checkAI();
 
-    intervalId = setInterval(checkAI, 5000);
-
-    return () => {
-      clearInterval(intervalId);
+    return ()=>{
+      cancelled= true;
     };
   }, []);
-
 
 
   // placeholder for your logic later
