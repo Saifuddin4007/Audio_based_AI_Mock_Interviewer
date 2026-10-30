@@ -1,5 +1,5 @@
 
-import { waitForAIService } from "../services/aiServiceHealth";
+import { waitForAIService } from "../services/aiServiceHealth.js";
 
 export const checkAIReadiness = async (req, res) => {
    
