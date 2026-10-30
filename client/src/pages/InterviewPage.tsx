@@ -18,28 +18,38 @@ const InterviewPage: React.FC = () => {
   const navigate = useNavigate();
 
 
-  useEffect(()=>{
-    let cancelled= false;
+  useEffect(() => {
+    let cancelled = false;
 
-    const checkAI= async (): Promise<void> =>{
-      const ready= await checkAIReadiness();
+    const waitForAI = async (): Promise<void> => {
+      while (!cancelled) {
+        const ready = await checkAIReadiness();
 
-      if(cancelled){
-        return;
-      }
+        if (cancelled) {
+          return;
+        }
 
-      if(ready){
-        setAiReady(true);
-        setCheckingAI(false);
-      }else{
-        setCheckingAI(false);
+        if (ready) {
+          console.log("AI is ready");
+
+          setAiReady(true);
+          setCheckingAI(false);
+          return;
+        }
+
+        console.log("AI isn't ready. Retrying in 5 secs...");
+
+        await new Promise((resolve) => {
+          setTimeout(resolve, 5000);
+        });
+
       }
     }
 
-    checkAI();
+    waitForAI();
 
-    return ()=>{
-      cancelled= true;
+    return () => {
+      cancelled = true;
     };
   }, []);
 
