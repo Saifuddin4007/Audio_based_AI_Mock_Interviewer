@@ -29,6 +29,7 @@ Thumbs.db
 ai_services/venv/
 __pycache__/
 *.pyc
+.venv
 
 # Ignore uploaded user audio (don't push user data to GitHub!)
 uploads/
