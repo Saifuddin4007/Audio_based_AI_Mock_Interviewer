@@ -372,7 +372,12 @@ async def text_to_speech(request: TTSRequest):
             detail="Speech generation failed."
         )
         
-        
+
+@app.get("/live")
+def live():
+    return {"status": "ok"}
+
+     
 
 @app.get("/health")
 def health():
