@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startInterview } from "../services/interviewService";
 import { createSession } from "../services/sessionService";
 import type { Difficulty, InterviewType } from "../types/session";
 import { checkAIReadiness } from "../services/aiService";
+import { wakeAIService } from "../services/aiWakeService";
 
 const InterviewPage: React.FC = () => {
   const [role, setRole] = useState<string>("");
@@ -12,46 +13,32 @@ const InterviewPage: React.FC = () => {
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [interviewType, setInterviewType] = useState<InterviewType | "">("");
   const [isStarting, setIsStarting] = useState<boolean>(false);
-  const [aiReady, setAiReady] = useState<boolean>(false);
-  const [checkingAI, setCheckingAI] = useState<boolean>(true);
+  const [checkingAI, setCheckingAI] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
+  const waitForAI = async (): Promise<boolean> => {
+    const timeout = 120000;
+    const retryDelay = 5000;
+    const startTime = Date.now();
 
-  useEffect(() => {
-    let cancelled = false;
+    while (Date.now() - startTime < timeout) {
+      const ready = await checkAIReadiness();
 
-    const waitForAI = async (): Promise<void> => {
-      while (!cancelled) {
-        const ready = await checkAIReadiness();
-
-        if (cancelled) {
-          return;
-        }
-
-        if (ready) {
-          console.log("AI is ready");
-
-          setAiReady(true);
-          setCheckingAI(false);
-          return;
-        }
-
-        console.log("AI isn't ready. Retrying in 5 secs...");
-
-        await new Promise((resolve) => {
-          setTimeout(resolve, 5000);
-        });
-
+      if (ready) {
+        console.log("AI is ready");
+        return true;
       }
+
+      console.log("AI isn't ready. Retrying in 5 secs...");
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, retryDelay);
+      });
     }
-
-    waitForAI();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    console.log("AI service readiness timeout");
+    return false;
+  };
 
 
   // placeholder for your logic later
@@ -59,30 +46,42 @@ const InterviewPage: React.FC = () => {
 
     const cleanedSkills = focusSkills.split(",").map((skill) => skill.trim()).filter((skill) => skill !== "");
 
+    if (!difficulty) {
+      alert("Please select a difficulty level");
+      return;
+    }
+    if (!interviewType) {
+      alert("Please select an interview type");
+      return;
+    }
+    if (!role) {
+      alert("Please enter a role");
+      return;
+    }
+    if (experienceYears < 0) {
+      alert("Please enter your experience years");
+      return;
+    }
+    if (cleanedSkills.length === 0) {
+      alert("Please select at least one focus skill");
+      return;
+    }
+
+
     try {
 
       setIsStarting(true);
+      setCheckingAI(true);
 
-      if (!difficulty) {
-        alert("Please select a difficulty level");
+      await wakeAIService();
+
+      const ready = await waitForAI();
+      if (!ready) {
+        alert("AI Interviewer could not be started. Please try again.");
         return;
       }
-      if (!interviewType) {
-        alert("Please select an interview type");
-        return;
-      }
-      if (!role) {
-        alert("Please enter a role");
-        return;
-      }
-      if (experienceYears < 0) {
-        alert("Please enter your experience years");
-        return;
-      }
-      if (cleanedSkills.length === 0) {
-        alert("Please select at least one focus skill");
-        return;
-      }
+
+      setCheckingAI(false);
 
 
       const res = await createSession({ role, experienceYears, focusSkills: cleanedSkills, difficulty, interviewType });
@@ -107,6 +106,7 @@ const InterviewPage: React.FC = () => {
       alert("Something went wrong, please try again later");
     } finally {
       setIsStarting(false);
+      setCheckingAI(false);
     }
   };
 
@@ -124,20 +124,14 @@ const InterviewPage: React.FC = () => {
         <button
           className="mb-10 py-3 px-8 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition cursor-pointer"
           onClick={handleInterview}
-          disabled={isStarting || checkingAI || !aiReady}
+          disabled={isStarting}
         >
-          Start Interview
+          {isStarting ? "Preparing Interview..." : "Start Interview"}
         </button>
 
-        {checkingAI && (
+        {checkingAI && isStarting && (
           <p className="mb-6 text-gray-600">
             Preparing AI interviewer... This may take a little longer the first time.
-          </p>
-        )}
-
-        {aiReady && !isStarting && (
-          <p className="mb-6 text-green-600 font-medium">
-            ✓ AI interviewer is ready
           </p>
         )}
 
