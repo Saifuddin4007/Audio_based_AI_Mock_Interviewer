@@ -1,21 +1,14 @@
 from fastapi import (
     FastAPI, 
     HTTPException, 
-    Response,
-    UploadFile,
-    File,
-    Form,
+    Response
 )
 from fastapi.middleware.cors import CORSMiddleware 
-from pydantic import BaseModel
-from faster_whisper import WhisperModel 
+from pydantic import BaseModel 
 from piper import PiperVoice 
 import wave                   
 import os
 import io
-import av
-import numpy as np
-import json
 import time
 from fastapi.responses import JSONResponse
 
@@ -23,7 +16,7 @@ models_ready= False
 startup_start = time.perf_counter()
 
 #  Initialize the FastAPI app
-app = FastAPI(title="Local AI Service (STT & TTS)")
+app = FastAPI(title="AI Service (TTS)")
 
 origins= ["https://audio-based-ai-mock-interviewer.vercel.app"]
 app.add_middleware(
@@ -33,20 +26,6 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
-
-# Load the Whisper model ONCE when the server starts
-# This prevents reloading the heavy model on every single request
-#  1. STT: Load Whisper Model (Runs once at startup)
-print("⏳ Loading Whisper model...")
-whisper_start= time.perf_counter()
-stt_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
-whisper_time= time.perf_counter() - whisper_start
-print(f" Whisper Model loaded in {whisper_time:.2f} seconds")
-
-
-
-# 2. TTS: Load Piper Voice Model (Runs once at startup)
-# print("Loading Piper TTS model...")
 
 model_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -76,251 +55,6 @@ print("AI models are ready")
 class TTSRequest(BaseModel):
     text: str
   
-
-
-INTERVIEW_TYPE_TERMS = {
-    "Technical": [
-        "API", "REST", "HTTP", "backend", "frontend",
-        "database", "authentication", "authorization",
-        "middleware", "deployment", "Git", "Docker"
-    ],
-    "Behavioral": [
-        "teamwork", "leadership", "communication",
-        "conflict", "deadline", "responsibility",
-        "challenge", "achievement", "collaboration"
-    ],
-    "HR": [
-        "salary", "compensation", "relocation",
-        "notice period", "availability", "career goals",
-        "strengths", "weaknesses", "expectations"
-    ]
-}
-
-
-def build_interview_context(
-    interview_type: str,
-    role: str,
-    focus_skills: list[str],
-    question: str
-):
-    interview_type = interview_type.strip()
-
-    if interview_type not in INTERVIEW_TYPE_TERMS:
-        raise HTTPException(
-            status_code=400,
-            detail= "Unsupported Audio Interview Type. Choose from: Technical, Behavioral, HR"
-        )
-
-    focus_skills = [
-        skill.strip()
-        for skill in focus_skills
-        if isinstance(skill, str) and skill.strip()
-    ]
-
-    role = role.strip()
-    question = question.strip()
-
-    terms = (
-        INTERVIEW_TYPE_TERMS[interview_type]
-        + ([role] if role else [])
-        + focus_skills
-    )
-
-    # Remove duplicate terms while preserving their order.
-    terms = list(dict.fromkeys(terms))
-
-    prompt = f"""
-This is an English-language {interview_type} job interview.
-The role is {role or "unspecified"}.
-Relevant skills include: {", ".join(focus_skills) or "unspecified"}.
-The question being answered is: {question or "unspecified"}.
-
-Transcribe the candidate's actual speech accurately.
-Preserve spoken names, abbreviations, and domain-specific
-terms. Do not rewrite or improve the candidate's grammar.
-"""
-
-    return {
-        "prompt": prompt,
-        "hotwords": ", ".join(terms)
-    } 
-
-def decode_audio_bytes(audio_bytes: bytes) -> np.ndarray:
-    """
-    Decode uploaded audio bytes into a mono 16 kHz float32 waveform.
-
-    No temporary audio file is created.
-    """
-
-    audio_buffer = io.BytesIO(audio_bytes)
-
-    container = av.open(audio_buffer)
-
-    try:
-        audio_stream = next(
-            stream
-            for stream in container.streams
-            if stream.type == "audio"
-        )
-
-        resampler = av.AudioResampler(
-            format="fltp",
-            layout="mono",
-            rate=16000
-        )
-
-        samples = []
-
-        for frame in container.decode(audio_stream):
-
-            resampled_frames = resampler.resample(frame)
-
-            if not isinstance(resampled_frames, list):
-                resampled_frames = [resampled_frames]
-
-            for resampled_frame in resampled_frames:
-
-                array = resampled_frame.to_ndarray()
-
-                array = array.reshape(-1)
-
-                samples.append(array)
-
-        # Flush remaining samples from the resampler.
-        remaining_frames = resampler.resample(None)
-
-        if remaining_frames:
-
-            if not isinstance(remaining_frames, list):
-                remaining_frames = [remaining_frames]
-
-            for remaining_frame in remaining_frames:
-
-                array = remaining_frame.to_ndarray().reshape(-1)
-
-                samples.append(array)
-
-        if not samples:
-            raise ValueError("No audio samples could be decoded.")
-
-        waveform = np.concatenate(samples).astype(np.float32)
-
-        return waveform
-
-    finally:
-        container.close()
-
-
-
-@app.post("/transcribe")
-async def transcribe_audio(
-    audio: UploadFile = File(...),
-    interview_type: str = Form(""),
-    role: str = Form(""),
-    focus_skills: str = Form("[]"),
-    question: str = Form("")
-):
-
-    try:
-
-        print(f"🎙️ Received audio: {audio.filename}")
-        print(f"🎵 MIME type: {audio.content_type}")
-
-        # Read uploaded audio directly into memory.
-        audio_bytes = await audio.read()
-
-        print(f"📦 Audio size: {len(audio_bytes)} bytes")
-
-        if not audio_bytes:
-            raise HTTPException(
-                status_code=400,
-                detail="Uploaded audio is empty."
-            )
-
-        # Parse focus skills.
-        # Node sends this as a JSON string because multipart
-        # form fields are strings.
-
-        try:
-            parsed_focus_skills = json.loads(focus_skills)
-
-            if not isinstance(parsed_focus_skills, list):
-                parsed_focus_skills = []
-
-        except json.JSONDecodeError:
-            parsed_focus_skills = []
-
-        # Build interview-specific transcription context.
-
-        context = build_interview_context(
-            interview_type=interview_type,
-            role=role,
-            focus_skills=parsed_focus_skills,
-            question=question
-        )
-
-        # Decode audio bytes -> NumPy waveform.
-        # NO FILE IS CREATED.
-
-
-        print("🔄 Decoding audio in memory...")
-
-        waveform = decode_audio_bytes(audio_bytes)
-
-        print(
-            f"✅ Audio decoded: "
-            f"{len(waveform)} samples"
-        )
-
-        # Faster-Whisper transcription.
-
-        print("🧠 Running Faster-Whisper...")
-
-        segments, info = stt_model.transcribe(
-            waveform,
-            language="en",
-            beam_size=1,
-            vad_filter=True,
-            vad_parameters={
-                "min_silence_duration_ms": 500
-            },
-            initial_prompt=context["prompt"],
-            hotwords=context["hotwords"]
-        )
-
-        # Combine all segments.
-
-        full_text = " ".join(
-            segment.text.strip()
-            for segment in segments
-        ).strip()
-
-        print(
-            f"✅ Transcription complete. "
-            f"Language: {info.language}"
-        )
-
-        print(f"📝 Transcript: {full_text}")
-
-        return {
-            "success": True,
-            "text": full_text,
-            "language": info.language
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-
-        print(f"❌ Transcription error: {e}")
-
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to transcribe audio."
-        )
-
-
 
 
 @app.post("/speak")
