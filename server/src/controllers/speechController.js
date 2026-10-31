@@ -1,5 +1,3 @@
-import axios from 'axios';
-import FormData from 'form-data';
 import Session from '../models/Session.js';
 import { clearHistory, getHistory, saveTurn } from '../services/memoryService.js';
 import { evaluateSession } from '../services/evaluationService.js';
@@ -7,10 +5,9 @@ import { generateNextQuestion } from '../services/interviewService.js';
 import { generateSpeech } from '../services/speechService.js';
 import mongoose from 'mongoose';
 import { uploadAnswerAudio, deleteAnswerAudio } from '../services/cloudinaryService.js';
-import { waitForAIService } from '../services/aiServiceHealth.js';
+import { transcribeAudio } from '../services/transcriptionService.js';
 
 
-// src/controllers/speechController.js
 export const uploadAudio = async (req, res) => {
   let cloudinaryPublicId = null;
   let answerSaved = false;
@@ -35,7 +32,7 @@ export const uploadAudio = async (req, res) => {
       return res.status(404).json({ message: "Session not found" });
     }
     if (session.user.toString() !== req.userId) {
-  
+
       return res.status(403).json({ message: "Unauthorized" });
     }
 
@@ -43,13 +40,13 @@ export const uploadAudio = async (req, res) => {
       return res.status(400).json({ message: "Interview is not active" });
     }
 
-    const audioInterviewTypes= [
+    const audioInterviewTypes = [
       "Technical",
       "HR",
       "Behavioral"
     ];
 
-    if(!audioInterviewTypes.includes(session.interviewType)){
+    if (!audioInterviewTypes.includes(session.interviewType)) {
       return res.status(400).json({
         message: `audio answers are not supported for ${session.interviewType} interviews.`
       });
@@ -70,49 +67,18 @@ export const uploadAudio = async (req, res) => {
 
     cloudinaryPublicId = cloudinaryAudio.public_id;
 
-    // 2. Send the audio buffer to the Python Whisper service
-    console.log("Sending to Python for transcription...");
+    console.log("Sending audio to Groq for transcription...");
 
-    const form = new FormData();
-
-    form.append('audio', req.file.buffer, {
+    let transcribedText = await transcribeAudio({
+      audioBuffer: req.file.buffer,
       filename: req.file.originalname,
-      contentType: req.file.mimetype
+      contentType: req.file.mimetype,
+      interviewType: session.interviewType,
+      role: session.role,
+      focusSkills: session.focusSkills ?? [],
+      question: lastQuestion.questionText
     });
 
-    form.append(
-      'interview_type',
-      session.interviewType
-    );
-
-    form.append(
-      'role',
-      session.role
-    );
-
-    form.append(
-      'focus_skills',
-      JSON.stringify(session.focusSkills ?? [])
-    );
-
-    form.append(
-      'question',
-      lastQuestion.questionText
-    );
-
-    await waitForAIService();
-    const pythonResponse = await axios.post(
-      `${process.env.AI_SERVICE_URL}/transcribe`,
-      form,
-      {
-        headers: form.getHeaders(),
-        maxBodyLength: Infinity,
-        timeout: 120000
-      }
-    );
-
-    // 3. Extract the transcribed text from Python's response
-    let transcribedText = pythonResponse.data.text;
     console.log(`Transcription successful: "${transcribedText}"`);
 
     if (typeof transcribedText !== "string" || !transcribedText.trim()) {
@@ -228,7 +194,7 @@ export const uploadAudio = async (req, res) => {
     }
     console.error("Transcription pipeline error:", error.message);
 
-    // Check if Python server is down
+    // Handle downstream AI service/network failure.
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({ error: "AI Service is currently unavailable. Please try again." });
     }
