@@ -25,11 +25,12 @@ startup_start = time.perf_counter()
 #  Initialize the FastAPI app
 app = FastAPI(title="Local AI Service (STT & TTS)")
 
+origins= ["https://audio-based-ai-mock-interviewer.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=origins,
+    allow_credentials=False,
+    allow_methods=["GET"],
     allow_headers=["*"],
 )
 
@@ -38,7 +39,7 @@ app.add_middleware(
 #  1. STT: Load Whisper Model (Runs once at startup)
 print("⏳ Loading Whisper model...")
 whisper_start= time.perf_counter()
-stt_model = WhisperModel("base.en", device="cpu", compute_type="int8")
+stt_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
 whisper_time= time.perf_counter() - whisper_start
 print(f" Whisper Model loaded in {whisper_time:.2f} seconds")
 
