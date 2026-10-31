@@ -1,4 +1,4 @@
-import { checkAIServiceHealth } from "../utils/aiServiceHealth.js";
+import { checkAIServiceHealth } from "../services/aiServiceHealth.js";
 
 export const checkAIReadiness = async (req, res) => {
     console.log("=================================");
