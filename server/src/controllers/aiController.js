@@ -1,7 +1,6 @@
 import { checkAIServiceHealth } from "../services/aiServiceHealth.js";
 
 export const checkAIReadiness = async (req, res) => {
-    console.log("=================================");
     console.log("AI readiness request received");
     console.log("Time:", new Date().toISOString());
 
