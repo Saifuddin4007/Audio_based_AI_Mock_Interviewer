@@ -9,10 +9,7 @@ export const generateSpeech = async (questionText) => {
 
     await waitForAIService();
 
-    console.log(
-        "Calling AI service:",
-        `${process.env.AI_SERVICE_URL}/speak`
-    );
+
     try {
         const response = await axios.post(`${process.env.AI_SERVICE_URL}/speak`,
             {
