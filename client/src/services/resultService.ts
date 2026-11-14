@@ -7,10 +7,17 @@ interface GetOneResult {
     result: Result;
     message: string;
 }
+interface Pagination {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+}
 
 interface GetAllResults {
     results: Result[];
     message: string;
+    pagination: Pagination
 }
 
 
@@ -28,9 +35,14 @@ export async function getOneResult(sessionId:string): Promise<GetOneResult>{
     }
 }
 
-export async function getAllResults(): Promise<GetAllResults>{
+export async function getAllResults(page=1, limit=10): Promise<GetAllResults>{
     try{
-        const response= await api.get<GetAllResults>('/api/v1/result/');
+        const response= await api.get<GetAllResults>('/api/v1/result/', {
+            params: {
+                page,
+                limit
+            }
+        });
         return response.data;
     }catch(err:unknown){
         if(axios.isAxiosError<ApiError>(err)){
