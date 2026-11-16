@@ -9,31 +9,14 @@ export const transcribeAudio = async ({
     audioBuffer,
     filename,
     contentType,
-    interviewType,
-    role,
-    focusSkills,
-    question
+    focusSkills
 }) => {
+    
     if (!audioBuffer || audioBuffer.length === 0) {
         throw new Error("Audio buffer is empty");
     }
 
-    const prompt = `
-This is an English-language ${interviewType} job interview.
-The role is ${role || "unspecified"}.
-Relevant skills include: ${focusSkills?.length
-            ? focusSkills.join(", ")
-            : "unspecified"
-        }.
-
-The interview question is:
-${question || "unspecified"}
-
-Transcribe the candidate's actual speech accurately.
-Preserve spoken names, abbreviations, technical terms,
-and domain-specific terminology.
-Do not rewrite, improve, or correct the candidate's grammar.
-`.trim();
+const prompt= focusSkills?.length ? focusSkills.join(", ") : undefined ;
 
     try {
         const transcription = await groq.audio.transcriptions.create({
@@ -46,7 +29,7 @@ Do not rewrite, improve, or correct the candidate's grammar.
             ),
             model: "whisper-large-v3-turbo",
             language: "en",
-            prompt,
+            ...(prompt ? {prompt} : {}),
             response_format: "json",
             temperature: 0
         });
