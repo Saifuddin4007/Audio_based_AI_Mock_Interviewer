@@ -73,10 +73,7 @@ export const uploadAudio = async (req, res) => {
       audioBuffer: req.file.buffer,
       filename: req.file.originalname,
       contentType: req.file.mimetype,
-      interviewType: session.interviewType,
-      role: session.role,
-      focusSkills: session.focusSkills ?? [],
-      question: lastQuestion.questionText
+      focusSkills: session.focusSkills ?? []
     });
 
     console.log(`Transcription successful: "${transcribedText}"`);
