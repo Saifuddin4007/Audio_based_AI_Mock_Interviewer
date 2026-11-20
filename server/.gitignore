@@ -37,3 +37,7 @@ uploads/
 # Ignore large AI model files
 *.onnx
 *.onnx.json
+
+
+# Vitest reports and artifacts
+.vitest/
